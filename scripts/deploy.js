@@ -32,16 +32,30 @@ async function main() {
     fs.mkdirSync(configDir, { recursive: true });
   }
 
+  // Lấy ABI từ file artifact biên dịch của Hardhat
+  const artifactPath = path.join(__dirname, "../artifacts/contracts/Voting.sol/Voting.json");
+  let abi = [];
+  if (fs.existsSync(artifactPath)) {
+    const artifact = JSON.parse(fs.readFileSync(artifactPath, "utf8"));
+    abi = artifact.abi;
+  }
+
+  // Lấy chainId hiện tại
+  const network = await hre.ethers.provider.getNetwork();
+
   const contractData = {
     address: contractAddress,
-    network: hre.network.name
+    network: hre.network.name,
+    chainId: network.chainId.toString(),
+    adminAddress: deployer.address,
+    abi: abi
   };
 
   fs.writeFileSync(
     path.join(configDir, "contract-config.json"),
     JSON.stringify(contractData, null, 2)
   );
-  console.log(" Đã lưu cấu hình địa chỉ contract vào: frontend/contract-config.json");
+  console.log(" Đã tự động xuất Địa chỉ hợp đồng & ABI sang: frontend/contract-config.json");
 }
 
 main().catch((error) => {

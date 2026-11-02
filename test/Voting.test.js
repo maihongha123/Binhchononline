@@ -239,4 +239,98 @@ describe("KIỂM THỬ TOÀN DIỆN HỆ THỐNG BÌNH CHỌN (VOTING SMART CONT
         .withArgs(0, 1);
     });
   });
+
+  // =================================================================
+  // 7. KIỂM THỬ ĐA TÀI KHOẢN & TÍCH HỢP WEB3 (PHẦN VIỆC THÀNH VIÊN 2)
+  // =================================================================
+  describe("7. Tương tác Đa tài khoản & Tích hợp Web3 (Thành viên 2)", function () {
+    let accounts;
+
+    beforeEach(async function () {
+      // Lấy toàn bộ danh sách các tài khoản ví từ Hardhat
+      accounts = await ethers.getSigners();
+    });
+
+    it("Mô phỏng 5 cử tri khác nhau kết nối ví và bỏ phiếu đồng thời", async function () {
+      // 1. Thêm 3 ứng cử viên
+      await voting.connect(admin).addCandidate("Ung vien 1");
+      await voting.connect(admin).addCandidate("Ung vien 2");
+      await voting.connect(admin).addCandidate("Ung vien 3");
+
+      // 2. Admin cấp quyền cho 5 cử tri (accounts[1] đến accounts[5])
+      for (let i = 1; i <= 5; i++) {
+        await voting.connect(admin).registerVoter(accounts[i].address);
+      }
+
+      // 3. Admin mở hòm phiếu
+      await voting.connect(admin).startVoting();
+
+      // 4. Lần lượt 5 ví kết nối và thực hiện giao dịch bỏ phiếu
+      // Ví 1, 2, 3 bầu cho Ứng viên 1 (3 phiếu)
+      await voting.connect(accounts[1]).vote(1);
+      await voting.connect(accounts[2]).vote(1);
+      await voting.connect(accounts[3]).vote(1);
+
+      // Ví 4 bầu cho Ứng viên 2 (1 phiếu)
+      await voting.connect(accounts[4]).vote(2);
+
+      // Ví 5 bầu cho Ứng viên 3 (1 phiếu)
+      await voting.connect(accounts[5]).vote(3);
+
+      // 5. Kiểm tra kết quả tổng hợp on-chain
+      expect(await voting.totalVotes()).to.equal(5);
+
+      const candidates = await voting.getCandidates();
+      expect(candidates[0].voteCount).to.equal(3); // Ứng viên 1: 3 phiếu
+      expect(candidates[1].voteCount).to.equal(1); // Ứng viên 2: 1 phiếu
+      expect(candidates[2].voteCount).to.equal(1); // Ứng viên 3: 1 phiếu
+
+      // 6. Kết thúc và công bố người thắng cuộc
+      await voting.connect(admin).endVoting();
+      const [winnerName, highestVote] = await voting.getWinner();
+      expect(winnerName).to.equal("Ung vien 1");
+      expect(highestVote).to.equal(3);
+    });
+
+    it("Đảm bảo trạng thái cử tri độc lập khi chuyển đổi tài khoản ví (Signer)", async function () {
+      await voting.connect(admin).addCandidate("Nguyen Van A");
+      await voting.connect(admin).addCandidate("Tran Thi B");
+      await voting.connect(admin).registerVoter(voter1.address);
+      await voting.connect(admin).registerVoter(voter2.address);
+      await voting.connect(admin).startVoting();
+
+      // voter1 bỏ phiếu
+      await voting.connect(voter1).vote(1);
+
+      // Kiểm tra trạng thái: voter1 đã vote, voter2 chưa vote
+      const voter1Data = await voting.voters(voter1.address);
+      const voter2Data = await voting.voters(voter2.address);
+
+      expect(voter1Data.hasVoted).to.be.true;
+      expect(voter1Data.votedCandidateId).to.equal(1);
+      expect(voter2Data.hasVoted).to.be.false;
+
+      // Khi voter2 kết nối ví, voter2 vẫn có thể bỏ phiếu bình thường
+      await voting.connect(voter2).vote(2);
+      const voter2DataAfter = await voting.voters(voter2.address);
+      expect(voter2DataAfter.hasVoted).to.be.true;
+      expect(voter2DataAfter.votedCandidateId).to.equal(2);
+    });
+
+    it("Chặn chính xác khi tài khoản chưa cấp quyền xen lẫn tài khoản hợp lệ", async function () {
+      await voting.connect(admin).addCandidate("Nguyen Van A");
+      await voting.connect(admin).addCandidate("Tran Thi B");
+      await voting.connect(admin).registerVoter(voter1.address);
+      // stranger KHÔNG được cấp quyền
+      await voting.connect(admin).startVoting();
+
+      // voter1 hợp lệ -> vote thành công
+      await expect(voting.connect(voter1).vote(1)).to.not.be.reverted;
+
+      // stranger cố tình vote -> bị revert đúng câu thông báo
+      await expect(
+        voting.connect(stranger).vote(1)
+      ).to.be.revertedWith("Ban khong co ten trong danh sach duoc phep bo phieu!");
+    });
+  });
 });

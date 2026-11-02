@@ -4,7 +4,7 @@
 Xây dựng, hoàn thiện, kiểm thử và đóng gói toàn diện hệ thống DApp bình chọn trực tuyến trên nền tảng Blockchain Ethereum/Solidity với giao diện Web3 trực quan, phục vụ báo cáo và bảo vệ đồ án môn học đạt kết quả cao nhất.
 
 ## Current Phase
-Phase 3: Comprehensive Testing & Security Verification (Hoàn thành Phase 3 - Sẵn sàng cho Phase 4 của Thành viên 2)
+Phase 4: Web3 Middleware & Automated Deployment (Hoàn thành Phase 4 - Sẵn sàng cho Phase 5 của Thành viên 3)
 
 ## Phases
 
@@ -20,6 +20,7 @@ Phase 3: Comprehensive Testing & Security Verification (Hoàn thành Phase 3 - S
 - [x] Rà soát và chuẩn hóa kiểm tra dữ liệu đầu vào: chuỗi rỗng, địa chỉ ví trùng lặp
 - [x] Đảm bảo kiểm soát quyền truy cập (`onlyAdmin`, `WorkflowStatus`) an toàn
 - [x] Giữ đầy đủ các Events hỗ trợ Web3 Frontend
+- [x] **Thành viên 2:** Đối chiếu và đồng bộ ABI mới (bổ sung getCandidatesCount & 4 Events thời gian thực) vào frontend/app.js
 - **Status:** complete
 
 ### Phase 3: Comprehensive Testing & Security Verification (Kiểm thử tự động & Bảo mật)
@@ -27,14 +28,15 @@ Phase 3: Comprehensive Testing & Security Verification (Hoàn thành Phase 3 - S
 - [x] Viết test cho kiểm soát máy trạng thái, kiểm tra dữ liệu đầu vào (chuỗi rỗng, địa chỉ ví 0x0)
 - [x] Viết test mô phỏng tấn công: cử tri cố tình gọi hàm admin, cử tri bỏ phiếu 2 lần, gọi vote khi chưa mở, gọi vote sau khi đóng
 - [x] Kiểm tra phát sự kiện thời gian thực (Events: CandidateAdded, VoteCasted, StatusChanged)
+- [x] **Thành viên 2:** Mở rộng lên 27 test cases - Viết kịch bản kiểm thử luồng đa tài khoản ví hoạt động đồng thời bằng `ethers.getSigners()` (Độc lập trạng thái giữa các ví, tính toán số phiếu chính xác)
 - **Status:** complete
 
 ### Phase 4: Web3 Middleware & Automated Deployment (Hoàn thiện kết nối Web3 & Tự động hóa - Thành viên 2)
-- [ ] Chuẩn hóa `scripts/deploy.js`: tự động xuất file ABI đầy đủ và địa chỉ sang `frontend/contract-config.json`
-- [ ] Thêm cấu hình mạng local (Hardhat Node: 127.0.0.1:8545) và testnet (Sepolia/Amoy) trong `hardhat.config.js`
-- [ ] Cải thiện xử lý tài khoản trong `frontend/app.js`: bắt sự kiện đổi tài khoản `accountsChanged`, đổi mạng `chainChanged`
-- [ ] Lắng nghe sự kiện On-Chain thời gian thực (`votingContract.on("VoteCasted", ...)`), tự động reload dữ liệu không cần F5
-- **Status:** pending
+- [x] Chuẩn hóa `scripts/deploy.js`: tự động xuất file ABI đầy đủ, ChainId và địa chỉ sang `frontend/contract-config.json`
+- [x] Thêm cấu hình mạng local (Hardhat Node: 127.0.0.1:8545, ChainId: 31337) trong `hardhat.config.js`
+- [x] Cải thiện xử lý tài khoản trong `frontend/app.js`: tự động kiểm tra & yêu cầu MetaMask đổi sang mạng Localhost, bắt sự kiện `accountsChanged`, `chainChanged`
+- [x] Lắng nghe sự kiện On-Chain thời gian thực (`VoteCasted`, `CandidateAdded`, `VoterRegistered`, `StatusChanged`), tự động reload dữ liệu không cần F5
+- **Status:** complete
 
 ### Phase 5: Modern UI/UX Enhancement (Nâng cấp Giao diện & Trải nghiệm Người dùng - Thành viên 3)
 - [ ] Thay thế hoàn toàn các hàm `alert()` bằng hệ thống Toast Notification / Modal thông báo hiện đại
