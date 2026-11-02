@@ -171,6 +171,20 @@ async function loadConfig() {
 }
 
 async function connectWallet() {
+  // 1. Kiểm tra nếu người dùng mở trực tiếp dạng file:/// (MetaMask sẽ crash lỗi 'origin')
+  if (window.location.protocol === "file:") {
+    showToast(
+      "Yêu cầu mở qua Localhost",
+      "MetaMask không hỗ trợ file:///. Đang chuyển hướng sang http://localhost:3000...",
+      "warning",
+      5000
+    );
+    setTimeout(() => {
+      window.location.href = "http://localhost:3000";
+    }, 1200);
+    return;
+  }
+
   if (typeof window.ethereum === "undefined") {
     showToast(
       "Chưa cài MetaMask",
@@ -184,6 +198,9 @@ async function connectWallet() {
   const loadToast = showToast("Đang kết nối", "Vui lòng mở MetaMask và phê duyệt yêu cầu kết nối...", "loading", 0);
 
   try {
+    // Yêu cầu quyền truy cập tài khoản ví MetaMask trước
+    await window.ethereum.request({ method: "eth_requestAccounts" });
+
     provider = new ethers.BrowserProvider(window.ethereum);
 
     // Kiểm tra & yêu cầu chuyển mạng Hardhat Localhost (31337 / 0x7a69)
