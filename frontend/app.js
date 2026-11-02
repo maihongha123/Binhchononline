@@ -171,6 +171,20 @@ async function loadConfig() {
 }
 
 async function connectWallet() {
+  // 1. Kiểm tra nếu người dùng mở trực tiếp dạng file:/// (MetaMask sẽ crash lỗi 'origin')
+  if (window.location.protocol === "file:") {
+    showToast(
+      "Yêu cầu mở qua Localhost",
+      "MetaMask không hỗ trợ file:///. Đang chuyển hướng sang http://localhost:3000...",
+      "warning",
+      5000
+    );
+    setTimeout(() => {
+      window.location.href = "http://localhost:3000";
+    }, 1200);
+    return;
+  }
+
   if (typeof window.ethereum === "undefined") {
     showToast(
       "Chưa cài MetaMask",
@@ -184,6 +198,9 @@ async function connectWallet() {
   const loadToast = showToast("Đang kết nối", "Vui lòng mở MetaMask và phê duyệt yêu cầu kết nối...", "loading", 0);
 
   try {
+    // Yêu cầu quyền truy cập tài khoản ví MetaMask trước
+    await window.ethereum.request({ method: "eth_requestAccounts" });
+
     provider = new ethers.BrowserProvider(window.ethereum);
 
     // Kiểm tra & yêu cầu chuyển mạng Hardhat Localhost (31337 / 0x7a69)
@@ -759,5 +776,20 @@ if (typeof window !== "undefined" && window.ethereum) {
   });
 }
 
-// Khởi chạy nạp file cấu hình khi trang tải xong
-loadConfig();
+// Khởi chạy: Nạp cấu hình và tự động kết nối lại ví nếu đã đăng nhập trước đó (khi F5)
+async function autoConnectIfAuthorized() {
+  await loadConfig();
+  if (typeof window !== "undefined" && window.ethereum && window.location.protocol !== "file:") {
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_accounts" });
+      if (accounts && accounts.length > 0) {
+        console.log("[AutoConnect] Đã phát hiện ví đã cấp quyền, tự động kết nối lại:", accounts[0]);
+        await connectWallet();
+      }
+    } catch (err) {
+      console.log("[AutoConnect] Lỗi kết nối tự động:", err);
+    }
+  }
+}
+
+autoConnectIfAuthorized();
