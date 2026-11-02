@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hệ Thống Bình Chọn Trực Tuyến Trên Blockchain</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Ethers.js v6 CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="main-header">
+      <div class="header-content">
+        <div class="logo-area">
+          <span class="badge-tech">Ethereum / Solidity</span>
+          <h1 id="electionTitle">Hệ Thống Bình Chọn Trực Tuyến</h1>
+        </div>
+        <div class="wallet-area">
+          <button id="connectWalletBtn" class="btn btn-primary">Kết Nối MetaMask</button>
+          <div id="walletInfo" class="wallet-badge hidden">
+            <span class="dot"></span>
+            <span id="userAccount">0x000...</span>
+            <span id="userRole" class="role-tag">Khách</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="content-grid">
+      <!-- Cột Trái: Trạng thái & Bảng điều khiển Admin -->
+      <aside class="sidebar">
+        <!-- Thông tin tiến độ bầu cử -->
+        <section class="card status-card">
+          <h2>Trạng Thái Bầu Cử</h2>
+          <div class="status-indicator">
+            <span class="status-pill" id="statusBadge">Đang khởi tạo...</span>
+          </div>
+          <div class="stats-row">
+            <div class="stat-item">
+              <span class="stat-number" id="totalCandidatesCount">0</span>
+              <span class="stat-label">Ứng viên</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-number" id="totalVotesCount">0</span>
+              <span class="stat-label">Phiếu bầu</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Bảng điều khiển Quản trị viên (Chỉ Admin thấy hoặc kích hoạt) -->
+        <section class="card admin-card">
+          <div class="card-header">
+            <h3>Bảng Điều Khiển Admin</h3>
+            <span class="subtext">Dành riêng cho chủ hợp đồng</span>
+          </div>
+
+          <div class="form-group">
+            <label for="candidateNameInput">Thêm Ứng Viên:</label>
+            <div class="input-with-button">
+              <input type="text" id="candidateNameInput" placeholder="Nhập họ tên ứng viên...">
+              <button id="addCandidateBtn" class="btn btn-secondary">Thêm</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="voterAddressInput">Cấp Quyền Cho Cử Tri:</label>
+            <div class="input-with-button">
+              <input type="text" id="voterAddressInput" placeholder="Địa chỉ ví 0x...">
+              <button id="registerVoterBtn" class="btn btn-secondary">Cấp Quyền</button>
+            </div>
+          </div>
+
+          <div class="admin-actions">
+            <button id="startVotingBtn" class="btn btn-success full-width">Bắt Đầu Bỏ Phiếu</button>
+            <button id="endVotingBtn" class="btn btn-danger full-width">Kết Thúc Bầu Cử</button>
+          </div>
+        </section>
+      </aside>
+
+      <!-- Cột Phải: Danh sách ứng viên & Bỏ phiếu -->
+      <section class="main-panel">
+        <!-- Thông báo người thắng khi kết thúc -->
+        <div id="winnerBanner" class="winner-banner hidden">
+          <div class="trophy-icon">🏆</div>
+          <div>
+            <h3>ỨNG CỬ VIÊN CHIẾN THẮNG</h3>
+            <p id="winnerText">Chúc mừng: ...</p>
+          </div>
+        </div>
+
+        <!-- Trạng thái của cử tri đang kết nối -->
+        <div id="voterStatusNotice" class="notice-bar">
+          Vui lòng kết nối ví MetaMask để tham gia bình chọn.
+        </div>
+
+        <!-- Danh sách ứng cử viên -->
+        <div class="panel-header">
+          <h2>Danh Sách Ứng Cử Viên</h2>
+          <span class="subtext">Mỗi cử tri hợp lệ chỉ được bỏ phiếu 1 lần duy nhất</span>
+        </div>
+
+        <div id="candidateList" class="candidates-grid">
+          <!-- Render danh sách động từ app.js -->
+          <div class="empty-state">Đang tải dữ liệu từ Blockchain...</div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="main-footer">
+      <p>Đồ Án Học Phần: Blockchain Cơ Bản | Hợp Đồng Thông Minh Viết Bằng Solidity</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
