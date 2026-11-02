@@ -776,5 +776,20 @@ if (typeof window !== "undefined" && window.ethereum) {
   });
 }
 
-// Khởi chạy nạp file cấu hình khi trang tải xong
-loadConfig();
+// Khởi chạy: Nạp cấu hình và tự động kết nối lại ví nếu đã đăng nhập trước đó (khi F5)
+async function autoConnectIfAuthorized() {
+  await loadConfig();
+  if (typeof window !== "undefined" && window.ethereum && window.location.protocol !== "file:") {
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_accounts" });
+      if (accounts && accounts.length > 0) {
+        console.log("[AutoConnect] Đã phát hiện ví đã cấp quyền, tự động kết nối lại:", accounts[0]);
+        await connectWallet();
+      }
+    } catch (err) {
+      console.log("[AutoConnect] Lỗi kết nối tự động:", err);
+    }
+  }
+}
+
+autoConnectIfAuthorized();
