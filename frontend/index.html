@@ -3,25 +3,83 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hệ Thống Bình Chọn Trực Tuyến Trên Blockchain</title>
+  <title>Hệ Thống Bình Chọn Trực Tuyến Trên Blockchain (DApp)</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Ethers.js v6 CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
 </head>
 <body>
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <!-- Modal Xác Nhận Bỏ Phiếu -->
+  <div id="confirmModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-icon">🗳️</div>
+      <h3 class="modal-title">Xác Nhận Bỏ Phiếu</h3>
+      <p class="modal-desc">Bạn đang thực hiện bỏ phiếu tín nhiệm cho:</p>
+      <div class="modal-candidate-box">
+        <span class="modal-cand-badge" id="modalCandBadge">ỨNG CỬ VIÊN #1</span>
+        <h4 id="modalCandidateName" class="modal-cand-name">Nguyễn Văn A</h4>
+      </div>
+      <div class="modal-alert-box">
+        <span class="alert-icon">⚠️</span>
+        <div class="alert-text">
+          Giao dịch sẽ được ký bởi ví MetaMask và ghi bất biến lên <strong>Blockchain Ethereum</strong>. Phiếu bầu <strong>không thể thay đổi hoặc hoàn tác</strong>.
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="cancelVoteBtn" class="btn btn-ghost">Hủy Bỏ</button>
+        <button id="confirmVoteBtn" class="btn btn-primary modal-confirm-btn">
+          <span>Ký Xác Nhận Bỏ Phiếu</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div class="app-container">
     <!-- Header -->
     <header class="main-header">
       <div class="header-content">
         <div class="logo-area">
-          <span class="badge-tech">Ethereum / Solidity</span>
+          <div class="brand-row">
+            <span class="badge-tech">
+              <span class="pulse-dot"></span> Web3 DApp
+            </span>
+            <span class="network-badge" id="networkBadge">
+              <span class="network-dot"></span> Hardhat Local (31337)
+            </span>
+          </div>
           <h1 id="electionTitle">Hệ Thống Bình Chọn Trực Tuyến</h1>
         </div>
+
         <div class="wallet-area">
-          <button id="connectWalletBtn" class="btn btn-primary">Kết Nối MetaMask</button>
+          <button id="refreshDataBtn" class="btn-icon" title="Làm mới dữ liệu từ Blockchain">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+            </svg>
+          </button>
+
+          <button id="connectWalletBtn" class="btn btn-primary btn-connect">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px">
+              <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/>
+              <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>
+            </svg>
+            Kết Nối MetaMask
+          </button>
+
           <div id="walletInfo" class="wallet-badge hidden">
             <span class="dot"></span>
-            <span id="userAccount">0x000...</span>
+            <span id="userAccount" class="user-account" title="Bấm để sao chép địa chỉ ví">0x000...</span>
+            <button id="copyAddressBtn" class="copy-btn" title="Sao chép địa chỉ ví">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </button>
             <span id="userRole" class="role-tag">Khách</span>
           </div>
         </div>
@@ -34,84 +92,188 @@
       <aside class="sidebar">
         <!-- Thông tin tiến độ bầu cử -->
         <section class="card status-card">
-          <h2>Trạng Thái Bầu Cử</h2>
+          <div class="card-title-row">
+            <h2>Tiến Trình Bầu Cử</h2>
+            <span class="pulse-live">ON-CHAIN</span>
+          </div>
+          
           <div class="status-indicator">
             <span class="status-pill" id="statusBadge">Đang khởi tạo...</span>
           </div>
+
+          <!-- Timeline các bước -->
+          <div class="election-timeline">
+            <div class="step-item" id="stepRegistering">
+              <div class="step-bullet">1</div>
+              <div class="step-content">
+                <div class="step-name">Đăng ký & Cấp quyền</div>
+                <div class="step-sub">Admin thiết lập</div>
+              </div>
+            </div>
+            <div class="step-connector" id="connector1"></div>
+            <div class="step-item" id="stepVoting">
+              <div class="step-bullet">2</div>
+              <div class="step-content">
+                <div class="step-name">Bỏ phiếu tín nhiệm</div>
+                <div class="step-sub">Cử tri tham gia</div>
+              </div>
+            </div>
+            <div class="step-connector" id="connector2"></div>
+            <div class="step-item" id="stepEnded">
+              <div class="step-bullet">3</div>
+              <div class="step-content">
+                <div class="step-name">Kết thúc & Vinh danh</div>
+                <div class="step-sub">Khóa hòm phiếu</div>
+              </div>
+            </div>
+          </div>
+
           <div class="stats-row">
             <div class="stat-item">
               <span class="stat-number" id="totalCandidatesCount">0</span>
-              <span class="stat-label">Ứng viên</span>
+              <span class="stat-label">Ứng viên tham gia</span>
             </div>
             <div class="stat-item">
               <span class="stat-number" id="totalVotesCount">0</span>
-              <span class="stat-label">Phiếu bầu</span>
+              <span class="stat-label">Tổng phiếu đã bầu</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Thẻ Thông Tin Cử Tri Hiện Tại -->
+        <section class="card voter-profile-card" id="voterProfileCard">
+          <div class="card-header">
+            <h3>Hồ Sơ Cử Tri</h3>
+            <span class="subtext">Xác thực danh tính Web3</span>
+          </div>
+          
+          <div class="voter-attributes">
+            <div class="voter-attr-row">
+              <span class="attr-label">Địa chỉ ví:</span>
+              <span class="attr-val mono" id="voterCardAddress">Chưa kết nối</span>
+            </div>
+            <div class="voter-attr-row">
+              <span class="attr-label">Quyền bầu cử:</span>
+              <span class="attr-val" id="voterCardRegistration">
+                <span class="badge-pill badge-neutral">Chưa kiểm tra</span>
+              </span>
+            </div>
+            <div class="voter-attr-row">
+              <span class="attr-label">Trạng thái phiếu:</span>
+              <span class="attr-val" id="voterCardVoteStatus">
+                <span class="badge-pill badge-neutral">Chưa kiểm tra</span>
+              </span>
             </div>
           </div>
         </section>
 
         <!-- Bảng điều khiển Quản trị viên (Chỉ Admin thấy hoặc kích hoạt) -->
-        <section class="card admin-card">
+        <section class="card admin-card" id="adminCardSection">
           <div class="card-header">
-            <h3>Bảng Điều Khiển Admin</h3>
-            <span class="subtext">Dành riêng cho chủ hợp đồng</span>
-          </div>
-
-          <div class="form-group">
-            <label for="candidateNameInput">Thêm Ứng Viên:</label>
-            <div class="input-with-button">
-              <input type="text" id="candidateNameInput" placeholder="Nhập họ tên ứng viên...">
-              <button id="addCandidateBtn" class="btn btn-secondary">Thêm</button>
+            <div class="admin-header-title">
+              <span class="admin-icon">⚙️</span>
+              <div>
+                <h3>Bảng Điều Khiển Admin</h3>
+                <span class="subtext">Quản trị Smart Contract</span>
+              </div>
             </div>
+            <span class="admin-permission-tag" id="adminPermissionTag">Chỉ Admin</span>
           </div>
 
-          <div class="form-group">
-            <label for="voterAddressInput">Cấp Quyền Cho Cử Tri:</label>
-            <div class="input-with-button">
-              <input type="text" id="voterAddressInput" placeholder="Địa chỉ ví 0x...">
-              <button id="registerVoterBtn" class="btn btn-secondary">Cấp Quyền</button>
+          <div class="admin-card-body" id="adminCardBody">
+            <div class="form-group">
+              <label for="candidateNameInput">
+                <span>Thêm Ứng Cử Viên Mới</span>
+                <span class="form-hint">(Chỉ ở vòng Đăng ký)</span>
+              </label>
+              <div class="input-with-button">
+                <input type="text" id="candidateNameInput" placeholder="Nhập họ và tên ứng viên..." autocomplete="off">
+                <button id="addCandidateBtn" class="btn btn-secondary">
+                  <span>Thêm</span>
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div class="admin-actions">
-            <button id="startVotingBtn" class="btn btn-success full-width">Bắt Đầu Bỏ Phiếu</button>
-            <button id="endVotingBtn" class="btn btn-danger full-width">Kết Thúc Bầu Cử</button>
+            <div class="form-group">
+              <label for="voterAddressInput">
+                <span>Cấp Quyền Cử Tri (Whitelist)</span>
+                <span class="form-hint">(Chỉ ở vòng Đăng ký)</span>
+              </label>
+              <div class="input-with-button">
+                <input type="text" id="voterAddressInput" placeholder="Địa chỉ ví 0x..." autocomplete="off">
+                <button id="registerVoterBtn" class="btn btn-secondary">
+                  <span>Cấp Quyền</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="admin-actions">
+              <button id="startVotingBtn" class="btn btn-success full-width">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:6px">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+                Bắt Đầu Bỏ Phiếu
+              </button>
+              <button id="endVotingBtn" class="btn btn-danger full-width">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:6px">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                </svg>
+                Kết Thúc Bầu Cử
+              </button>
+            </div>
           </div>
         </section>
       </aside>
 
       <!-- Cột Phải: Danh sách ứng viên & Bỏ phiếu -->
       <section class="main-panel">
-        <!-- Thông báo người thắng khi kết thúc -->
+        <!-- Thông báo người thắng khi kết thúc (Winner Spotlight / Podium) -->
         <div id="winnerBanner" class="winner-banner hidden">
+          <div class="trophy-glow"></div>
           <div class="trophy-icon">🏆</div>
-          <div>
-            <h3>ỨNG CỬ VIÊN CHIẾN THẮNG</h3>
-            <p id="winnerText">Chúc mừng: ...</p>
+          <div class="winner-info">
+            <div class="winner-tag">KẾT QUẢ CHUNG CUỘC - QUÁN QUÂN BÌNH CHỌN</div>
+            <h3 id="winnerText" class="winner-name">Đang tổng hợp kết quả...</h3>
+            <p id="winnerStats" class="winner-stats">Tổng số phiếu đạt được dẫn đầu phiên bầu cử</p>
           </div>
+          <div class="winner-ribbon">WINNER</div>
         </div>
 
         <!-- Trạng thái của cử tri đang kết nối -->
         <div id="voterStatusNotice" class="notice-bar">
-          Vui lòng kết nối ví MetaMask để tham gia bình chọn.
+          <span class="notice-icon">ℹ️</span>
+          <span class="notice-text">Vui lòng kết nối ví MetaMask để tham gia bình chọn và xác thực quyền hạn.</span>
         </div>
 
         <!-- Danh sách ứng cử viên -->
         <div class="panel-header">
-          <h2>Danh Sách Ứng Cử Viên</h2>
-          <span class="subtext">Mỗi cử tri hợp lệ chỉ được bỏ phiếu 1 lần duy nhất</span>
+          <div class="panel-header-title">
+            <h2>Danh Sách Ứng Cử Viên</h2>
+            <span class="subtext">Dữ liệu phiếu bầu được cập nhật tức thì qua sự kiện On-Chain</span>
+          </div>
+          <div class="filter-badge" id="filterStatusBadge">
+            <span class="filter-dot"></span>
+            <span id="filterStatusText">Đang tải...</span>
+          </div>
         </div>
 
         <div id="candidateList" class="candidates-grid">
           <!-- Render danh sách động từ app.js -->
-          <div class="empty-state">Đang tải dữ liệu từ Blockchain...</div>
+          <div class="empty-state">
+            <div class="spinner"></div>
+            <p>Đang tải dữ liệu từ Blockchain...</p>
+          </div>
         </div>
       </section>
     </main>
 
     <!-- Footer -->
     <footer class="main-footer">
-      <p>Đồ Án Học Phần: Blockchain Cơ Bản | Hợp Đồng Thông Minh Viết Bằng Solidity</p>
+      <div class="footer-content">
+        <p><strong>Đồ Án Môn Học:</strong> Hệ Thống Bình Chọn Trực Tuyến Phi Tập Trung (DApp)</p>
+        <p class="footer-sub">Nền tảng: Ethereum Localnet • Smart Contract: Solidity • Tầng Web3: Ethers.js v6 • Giao diện: HTML5/CSS3 Responsive</p>
+        <p class="footer-credit">Phân công nhiệm vụ: Thành viên 1 (Smart Contract) | Thành viên 2 (Web3 Middleware) | Thành viên 3 (Frontend UI/UX)</p>
+      </div>
     </footer>
   </div>
 
