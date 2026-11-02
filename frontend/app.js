@@ -7,20 +7,31 @@
 // Địa chỉ Contract mặc định (sẽ được cập nhật sau khi chạy script deploy)
 let CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; 
 
-// ABI tối giản của Smart Contract Voting
+// ABI của Smart Contract Voting (Đã đối chiếu và đồng bộ đầy đủ theo Phase 2)
+// Bao gồm: Các hàm Đọc (view), Các hàm Ghi (transaction), và 4 Sự kiện (Events)
 const CONTRACT_ABI = [
+  // --- CÁC HÀM ĐỌC DỮ LIỆU (VIEW / CALL - Miễn phí Gas) ---
   "function admin() view returns (address)",
   "function electionName() view returns (string)",
   "function currentStatus() view returns (uint8)",
   "function totalVotes() view returns (uint256)",
   "function getCandidates() view returns (tuple(uint256 id, string name, uint256 voteCount)[])",
+  "function getCandidatesCount() view returns (uint256)",
   "function voters(address) view returns (bool isRegistered, bool hasVoted, uint256 votedCandidateId)",
+  "function getWinner() view returns (string winnerName, uint256 highestVote)",
+
+  // --- CÁC HÀM GHI DỮ LIỆU (TRANSACTIONS - Cần ví MetaMask ký và tốn Gas) ---
   "function addCandidate(string _name)",
   "function registerVoter(address _voter)",
   "function startVoting()",
   "function endVoting()",
   "function vote(uint256 _candidateId)",
-  "function getWinner() view returns (string winnerName, uint256 highestVote)"
+
+  // --- CÁC SỰ KIỆN (EVENTS - Hỗ trợ Web3 bắt tín hiệu thời gian thực) ---
+  "event CandidateAdded(uint256 indexed candidateId, string name)",
+  "event VoterRegistered(address indexed voterAddress)",
+  "event StatusChanged(uint8 previousStatus, uint8 newStatus)",
+  "event VoteCasted(address indexed voter, uint256 indexed candidateId)"
 ];
 
 // Khởi tạo các biến toàn cục

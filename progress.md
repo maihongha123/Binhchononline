@@ -16,6 +16,7 @@
   - Tinh giản mã nguồn `contracts/Voting.sol` theo hướng trực quan, dễ hiểu từng bước, không nén code khó đọc.
   - Tối ưu các bước trong hàm `vote()` và thuật toán tìm người thắng cuộc `getWinner()`.
   - Đồng bộ lại `README_SMART_CONTRACT.md`.
+  - **Thành viên 2:** Hoàn thành đối chiếu Smart Contract với Web3, cập nhật CONTRACT_ABI trong frontend/app.js (thêm getCandidatesCount và 4 Events realtime).
 
 ### Phase 3: Comprehensive Testing & Security Verification (Hoàn thành)
 - **Status:** complete

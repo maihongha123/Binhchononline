@@ -20,6 +20,7 @@ Phase 3: Comprehensive Testing & Security Verification (Hoàn thành Phase 3 - S
 - [x] Rà soát và chuẩn hóa kiểm tra dữ liệu đầu vào: chuỗi rỗng, địa chỉ ví trùng lặp
 - [x] Đảm bảo kiểm soát quyền truy cập (`onlyAdmin`, `WorkflowStatus`) an toàn
 - [x] Giữ đầy đủ các Events hỗ trợ Web3 Frontend
+- [x] **Thành viên 2:** Đối chiếu và đồng bộ ABI mới (bổ sung getCandidatesCount & 4 Events thời gian thực) vào frontend/app.js
 - **Status:** complete
 
 ### Phase 3: Comprehensive Testing & Security Verification (Kiểm thử tự động & Bảo mật)
