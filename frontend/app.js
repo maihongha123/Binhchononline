@@ -1,16 +1,14 @@
 // ==============================================================================
 // DỰ ÁN BÌNH CHỌN BLOCKCHAIN - PHÂN HỆ FRONTEND & WEB3
 // - THÀNH VIÊN 2: Tầng Web3 Middleware, Tích hợp Ethers.js & Xử lý Giao dịch
-// - THÀNH VIÊN 3: Tầng DOM Rendering, Giao diện Trải nghiệm Người dùng & Tương tác
+// - THÀNH VIÊN 3: Tầng DOM Rendering, Giao diện Trải nghiệm Người dùng (UI/UX)
+//                 Toast Notifications, Modal Xác nhận, Progress Bar & Podium
 // ==============================================================================
 
-// Địa chỉ Contract mặc định (sẽ được cập nhật sau khi chạy script deploy)
-let CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; 
+// 1. CẤU HÌNH & BIẾN TOÀN CỤC
+let CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
-// ABI của Smart Contract Voting (Đã đối chiếu và đồng bộ đầy đủ theo Phase 2)
-// Bao gồm: Các hàm Đọc (view), Các hàm Ghi (transaction), và 4 Sự kiện (Events)
 const CONTRACT_ABI = [
-  // --- CÁC HÀM ĐỌC DỮ LIỆU (VIEW / CALL - Miễn phí Gas) ---
   "function admin() view returns (address)",
   "function electionName() view returns (string)",
   "function currentStatus() view returns (uint8)",
@@ -19,33 +17,40 @@ const CONTRACT_ABI = [
   "function getCandidatesCount() view returns (uint256)",
   "function voters(address) view returns (bool isRegistered, bool hasVoted, uint256 votedCandidateId)",
   "function getWinner() view returns (string winnerName, uint256 highestVote)",
-
-  // --- CÁC HÀM GHI DỮ LIỆU (TRANSACTIONS - Cần ví MetaMask ký và tốn Gas) ---
   "function addCandidate(string _name)",
   "function registerVoter(address _voter)",
   "function startVoting()",
   "function endVoting()",
   "function vote(uint256 _candidateId)",
-
-  // --- CÁC SỰ KIỆN (EVENTS - Hỗ trợ Web3 bắt tín hiệu thời gian thực) ---
   "event CandidateAdded(uint256 indexed candidateId, string name)",
   "event VoterRegistered(address indexed voterAddress)",
   "event StatusChanged(uint8 previousStatus, uint8 newStatus)",
   "event VoteCasted(address indexed voter, uint256 indexed candidateId)"
 ];
 
-// Khởi tạo các biến toàn cục
 let provider;
 let signer;
 let votingContract;
 let currentAccount = null;
 let contractAdmin = null;
+let dynamicAbi = null;
+let pendingVoteCandidateId = null;
 
-// Tham chiếu các phần tử DOM trên giao diện
+// 2. THAM CHIẾU DOM ELEMENTS
+const toastContainer = document.getElementById("toastContainer");
+const confirmModal = document.getElementById("confirmModal");
+const modalCandBadge = document.getElementById("modalCandBadge");
+const modalCandidateName = document.getElementById("modalCandidateName");
+const cancelVoteBtn = document.getElementById("cancelVoteBtn");
+const confirmVoteBtn = document.getElementById("confirmVoteBtn");
+
 const connectWalletBtn = document.getElementById("connectWalletBtn");
 const walletInfo = document.getElementById("walletInfo");
 const userAccountSpan = document.getElementById("userAccount");
 const userRoleSpan = document.getElementById("userRole");
+const copyAddressBtn = document.getElementById("copyAddressBtn");
+const refreshDataBtn = document.getElementById("refreshDataBtn");
+
 const electionTitleH1 = document.getElementById("electionTitle");
 const statusBadge = document.getElementById("statusBadge");
 const totalCandidatesCount = document.getElementById("totalCandidatesCount");
@@ -54,18 +59,98 @@ const candidateList = document.getElementById("candidateList");
 const voterStatusNotice = document.getElementById("voterStatusNotice");
 const winnerBanner = document.getElementById("winnerBanner");
 const winnerText = document.getElementById("winnerText");
+const winnerStats = document.getElementById("winnerStats");
+const filterStatusText = document.getElementById("filterStatusText");
 
-// Input & Button Quản trị
+// Timeline Steps
+const stepRegistering = document.getElementById("stepRegistering");
+const stepVoting = document.getElementById("stepVoting");
+const stepEnded = document.getElementById("stepEnded");
+const connector1 = document.getElementById("connector1");
+const connector2 = document.getElementById("connector2");
+
+// Voter Profile Card
+const voterCardAddress = document.getElementById("voterCardAddress");
+const voterCardRegistration = document.getElementById("voterCardRegistration");
+const voterCardVoteStatus = document.getElementById("voterCardVoteStatus");
+
+// Admin Controls
 const candidateNameInput = document.getElementById("candidateNameInput");
 const addCandidateBtn = document.getElementById("addCandidateBtn");
 const voterAddressInput = document.getElementById("voterAddressInput");
 const registerVoterBtn = document.getElementById("registerVoterBtn");
 const startVotingBtn = document.getElementById("startVotingBtn");
 const endVotingBtn = document.getElementById("endVotingBtn");
+const adminPermissionTag = document.getElementById("adminPermissionTag");
 
-let dynamicAbi = null;
+// ==============================================================================
+// 3. HỆ THỐNG TOAST NOTIFICATION CHUYÊN NGHIỆP (THAY THẾ TOÀN BỘ ALERT)
+// ==============================================================================
+let toastCounter = 0;
 
-// 1. Tự động nạp file cấu hình contract-config.json nếu có
+function showToast(title, message, type = "info", duration = 4000) {
+  const toastId = `toast-${++toastCounter}`;
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+  toast.id = toastId;
+
+  let icon = "ℹ️";
+  if (type === "success") icon = "✅";
+  else if (type === "error") icon = "❌";
+  else if (type === "warning") icon = "⚠️";
+  else if (type === "loading") icon = `<div class="toast-spinner"></div>`;
+
+  toast.innerHTML = `
+    <div class="toast-icon">${icon}</div>
+    <div class="toast-content">
+      <div class="toast-title">${title}</div>
+      <div class="toast-msg">${message}</div>
+    </div>
+    <button class="toast-close" title="Đóng">&times;</button>
+    ${duration > 0 ? `<div class="toast-progress-track"><div class="toast-progress-bar"></div></div>` : ""}
+  `;
+
+  // Nút đóng
+  const closeBtn = toast.querySelector(".toast-close");
+  closeBtn.addEventListener("click", () => removeToast(toastId));
+
+  toastContainer.appendChild(toast);
+
+  // Thanh tiến độ đếm ngược
+  if (duration > 0) {
+    const progressBar = toast.querySelector(".toast-progress-bar");
+    if (progressBar) {
+      progressBar.style.transition = `width ${duration}ms linear`;
+      requestAnimationFrame(() => {
+        progressBar.style.width = "0%";
+      });
+    }
+
+    toast._timeout = setTimeout(() => {
+      removeToast(toastId);
+    }, duration);
+  }
+
+  return toastId;
+}
+
+function removeToast(toastId) {
+  const toast = document.getElementById(toastId);
+  if (!toast) return;
+
+  if (toast._timeout) clearTimeout(toast._timeout);
+  toast.classList.add("toast-hiding");
+
+  setTimeout(() => {
+    if (toast.parentElement) {
+      toast.parentElement.removeChild(toast);
+    }
+  }, 300);
+}
+
+// ==============================================================================
+// 4. KẾT NỐI VÍ & KHỞI TẠO WEB3
+// ==============================================================================
 async function loadConfig() {
   try {
     const res = await fetch("contract-config.json");
@@ -73,29 +158,35 @@ async function loadConfig() {
       const data = await res.json();
       if (data.address) {
         CONTRACT_ADDRESS = data.address;
-        console.log("Đã tải địa chỉ Contract từ config:", CONTRACT_ADDRESS);
+        console.log("[Config] Đã tải địa chỉ Contract:", CONTRACT_ADDRESS);
       }
       if (data.abi && Array.isArray(data.abi) && data.abi.length > 0) {
         dynamicAbi = data.abi;
-        console.log("Đã tải toàn bộ ABI từ config thành công!");
+        console.log("[Config] Đã tải toàn bộ ABI từ config!");
       }
     }
   } catch (err) {
-    console.log("Sử dụng cấu hình Contract mặc định.");
+    console.log("[Config] Sử dụng cấu hình Contract mặc định.");
   }
 }
 
-// 2. Kết nối ví MetaMask & Kiểm tra mạng Localhost
 async function connectWallet() {
   if (typeof window.ethereum === "undefined") {
-    alert("Vui lòng cài đặt tiện ích MetaMask trên trình duyệt!");
+    showToast(
+      "Chưa cài MetaMask",
+      "Vui lòng cài đặt tiện ích mở rộng MetaMask trên trình duyệt để tương tác DApp!",
+      "warning",
+      6000
+    );
     return;
   }
+
+  const loadToast = showToast("Đang kết nối", "Vui lòng mở MetaMask và phê duyệt yêu cầu kết nối...", "loading", 0);
 
   try {
     provider = new ethers.BrowserProvider(window.ethereum);
 
-    // Kiểm tra và yêu cầu đổi sang mạng Hardhat Localhost (Chain ID: 31337 / Hex: 0x7a69)
+    // Kiểm tra & yêu cầu chuyển mạng Hardhat Localhost (31337 / 0x7a69)
     const network = await provider.getNetwork();
     if (network.chainId !== 31337n) {
       try {
@@ -104,7 +195,6 @@ async function connectWallet() {
           params: [{ chainId: "0x7a69" }]
         });
       } catch (switchError) {
-        // Mã lỗi 4902: Mạng chưa được thêm vào MetaMask -> Yêu cầu thêm mạng
         if (switchError.code === 4902) {
           await window.ethereum.request({
             method: "wallet_addEthereumChain",
@@ -119,158 +209,302 @@ async function connectWallet() {
           throw switchError;
         }
       }
-      // Tạo lại provider sau khi đổi mạng
       provider = new ethers.BrowserProvider(window.ethereum);
     }
 
     signer = await provider.getSigner();
     currentAccount = await signer.getAddress();
 
-    // Hiển thị thông tin ví
+    removeToast(loadToast);
+    showToast("Kết nối thành công", `Đã liên kết ví: ${currentAccount.substring(0, 6)}...${currentAccount.substring(38)}`, "success", 3500);
+
+    // Cập nhật giao diện ví
     userAccountSpan.textContent = `${currentAccount.substring(0, 6)}...${currentAccount.substring(38)}`;
     connectWalletBtn.classList.add("hidden");
     walletInfo.classList.remove("hidden");
 
-    // Khởi tạo Contract Object
+    // Khởi tạo Smart Contract Object
     const activeAbi = dynamicAbi || CONTRACT_ABI;
     votingContract = new ethers.Contract(CONTRACT_ADDRESS, activeAbi, signer);
 
-    // Kích hoạt lắng nghe sự kiện On-Chain thời gian thực
+    // Bắt sự kiện thời gian thực On-Chain
     setupContractEvents();
 
-    // Lấy thông tin admin
+    // Xác thực vai trò Admin
     contractAdmin = await votingContract.admin();
-    if (contractAdmin.toLowerCase() === currentAccount.toLowerCase()) {
+    const isAdmin = contractAdmin.toLowerCase() === currentAccount.toLowerCase();
+
+    if (isAdmin) {
       userRoleSpan.textContent = "Admin";
       userRoleSpan.style.backgroundColor = "#e11d48";
+      adminPermissionTag.textContent = "Bạn là Admin ✅";
+      adminPermissionTag.style.borderColor = "#10b981";
+      adminPermissionTag.style.color = "#34d399";
+      adminPermissionTag.style.background = "rgba(16, 185, 129, 0.15)";
     } else {
       userRoleSpan.textContent = "Cử tri";
       userRoleSpan.style.backgroundColor = "#2563eb";
+      adminPermissionTag.textContent = "Chỉ Admin (Xem) 🔒";
     }
 
-    // Tải dữ liệu từ Blockchain
+    // Tải dữ liệu toàn hệ thống
     await reloadData();
 
   } catch (error) {
-    console.error("Lỗi khi kết nối ví:", error);
-    alert("Không thể kết nối với MetaMask: " + (error.message || error));
+    removeToast(loadToast);
+    console.error("Lỗi kết nối ví:", error);
+    showToast("Lỗi kết nối", error.reason || error.message || "Người dùng đã từ chối yêu cầu kết nối.", "error", 5000);
   }
 }
 
-// Thiết lập lắng nghe sự kiện On-Chain thời gian thực (Real-time Events)
+// Lắng nghe sự kiện thời gian thực (Real-time Events)
 function setupContractEvents() {
   if (!votingContract) return;
 
-  // Hủy lắng nghe cũ để tránh trùng lặp
   votingContract.removeAllListeners();
 
-  // 1. Khi có người bỏ phiếu
   votingContract.on("VoteCasted", (voter, candidateId) => {
-    console.log(`[SỰ KIỆN ON-CHAIN] Cử tri ${voter} đã bỏ phiếu cho ứng viên #${candidateId}`);
+    console.log(`[Event] VoteCasted: Cử tri ${voter} đã bầu cho #${candidateId}`);
+    showToast("Sự kiện Mới", `Cử tri ${voter.substring(0, 6)}... vừa bỏ phiếu cho Ứng viên #${candidateId}!`, "info", 4000);
     reloadData();
   });
 
-  // 2. Khi Admin thêm ứng viên mới
   votingContract.on("CandidateAdded", (candidateId, name) => {
-    console.log(`[SỰ KIỆN ON-CHAIN] Đã thêm ứng viên: ${name} (ID: #${candidateId})`);
+    console.log(`[Event] CandidateAdded: ${name} (#${candidateId})`);
+    showToast("Ứng viên Mới", `Quản trị viên đã thêm ứng viên: "${name}" (#${candidateId})`, "info", 4000);
     reloadData();
   });
 
-  // 3. Khi Admin cấp quyền cử tri
   votingContract.on("VoterRegistered", (voterAddress) => {
-    console.log(`[SỰ KIỆN ON-CHAIN] Cấp quyền cho cử tri: ${voterAddress}`);
+    console.log(`[Event] VoterRegistered: ${voterAddress}`);
+    if (currentAccount && voterAddress.toLowerCase() === currentAccount.toLowerCase()) {
+      showToast("Quyền Bầu Cử", "Ví của bạn vừa được Quản trị viên cấp quyền bỏ phiếu!", "success", 5000);
+    }
     reloadData();
   });
 
-  // 4. Khi trạng thái cuộc bầu cử thay đổi
   votingContract.on("StatusChanged", (prevStatus, newStatus) => {
-    console.log(`[SỰ KIỆN ON-CHAIN] Thay đổi trạng thái: ${prevStatus} -> ${newStatus}`);
+    console.log(`[Event] StatusChanged: ${prevStatus} -> ${newStatus}`);
+    let stName = "Đang diễn ra";
+    if (newStatus === 1) stName = "ĐÃ BẮT ĐẦU BỎ PHIẾU!";
+    else if (newStatus === 2) stName = "ĐÃ KẾT THÚC BẦU CỬ!";
+    showToast("Trạng thái Cuộc bầu cử", `Giai đoạn bầu cử đã chuyển sang: ${stName}`, "warning", 5000);
     reloadData();
   });
 }
 
-// 3. Tải và đồng bộ toàn bộ dữ liệu từ Smart Contract
+// ==============================================================================
+// 5. RENDER DỮ LIỆU & GIAO DIỆN NGƯỜI DÙNG (DOM ENGINE)
+// ==============================================================================
 async function reloadData() {
   if (!votingContract) return;
 
   try {
-    // 3.1 Tên cuộc bầu cử & Trạng thái
     const title = await votingContract.electionName();
-    const status = await votingContract.currentStatus();
-    const totalVotes = await votingContract.totalVotes();
+    const status = Number(await votingContract.currentStatus());
+    const totalVotes = Number(await votingContract.totalVotes());
 
     electionTitleH1.textContent = title;
     totalVotesCount.textContent = totalVotes.toString();
 
-    // Cập nhật trạng thái
-    updateStatusBadge(Number(status));
+    // 5.1 Cập nhật Trạng thái Pill & Timeline 3 bước
+    updateWorkflowUI(status);
 
-    // 3.2 Lấy danh sách ứng viên
-    const candidates = await votingContract.getCandidates();
-    totalCandidatesCount.textContent = candidates.length.toString();
-    renderCandidates(candidates, Number(status));
+    // 5.2 Lấy danh sách ứng viên & tính tỷ lệ %
+    const rawCandidates = await votingContract.getCandidates();
+    totalCandidatesCount.textContent = rawCandidates.length.toString();
 
-    // 3.3 Kiểm tra trạng thái của cử tri hiện tại
-    const voterInfo = await votingContract.voters(currentAccount);
-    updateVoterNotice(voterInfo, Number(status));
+    // Tìm số phiếu cao nhất hiện tại để highlight
+    let highestVoteCount = 0;
+    const candidates = rawCandidates.map((c) => {
+      const vCount = Number(c.voteCount);
+      if (vCount > highestVoteCount) highestVoteCount = vCount;
+      return {
+        id: Number(c.id),
+        name: c.name,
+        voteCount: vCount
+      };
+    });
 
-    // 3.4 Nếu đã kết thúc, hiển thị người chiến thắng
-    if (Number(status) === 2) {
+    renderCandidates(candidates, status, totalVotes, highestVoteCount);
+
+    // 5.3 Cập nhật Thẻ Cử Tri (Voter Profile Card) & Notice
+    if (currentAccount) {
+      const voterInfo = await votingContract.voters(currentAccount);
+      updateVoterCardAndNotice(voterInfo, status);
+    }
+
+    // 5.4 Cập nhật Trạng thái Khóa / Mở các nút Admin
+    updateAdminControls(status);
+
+    // 5.5 Banner Vinh danh Người thắng cuộc (Winner Spotlight)
+    if (status === 2) {
       try {
         const winner = await votingContract.getWinner();
+        const winnerName = winner[0];
+        const winnerVotes = Number(winner[1]);
+        const winPercent = totalVotes > 0 ? ((winnerVotes / totalVotes) * 100).toFixed(1) : 0;
+
         winnerBanner.classList.remove("hidden");
-        winnerText.textContent = `Ứng viên "${winner[0]}" với tổng số ${winner[1]} phiếu bầu!`;
+        winnerText.textContent = `${winnerName}`;
+        winnerStats.textContent = `Dẫn đầu áp đảo với ${winnerVotes}/${totalVotes} phiếu bầu (${winPercent}%)`;
       } catch (e) {
-        console.warn("Chưa có kết quả hoặc lỗi tính:", e);
+        console.warn("Lỗi tính người thắng cuộc:", e);
       }
     } else {
       winnerBanner.classList.add("hidden");
     }
 
   } catch (err) {
-    console.error("Lỗi khi đọc dữ liệu Smart Contract:", err);
+    console.error("Lỗi khi tải dữ liệu từ Blockchain:", err);
   }
 }
 
-// Cập nhật hiển thị Trạng thái (Pill)
-function updateStatusBadge(status) {
+// Cập nhật Máy Trạng Thái & Timeline 3 bước
+function updateWorkflowUI(status) {
   statusBadge.className = "status-pill";
+
+  // Reset timeline classes
+  [stepRegistering, stepVoting, stepEnded].forEach(s => s.className = "step-item");
+  [connector1, connector2].forEach(c => c.className = "step-connector");
+
   if (status === 0) {
-    statusBadge.textContent = "Đang Đăng Ký (Registering)";
+    statusBadge.textContent = "1. Đang Đăng Ký (Registering)";
     statusBadge.classList.add("status-registering");
+    filterStatusText.textContent = "Giai đoạn Đăng ký (Chưa mở bình chọn)";
+    
+    stepRegistering.classList.add("active");
   } else if (status === 1) {
-    statusBadge.textContent = "Đang Bỏ Phiếu (Voting Open)";
+    statusBadge.textContent = "2. Đang Bỏ Phiếu (Voting Open)";
     statusBadge.classList.add("status-voting");
+    filterStatusText.textContent = "Cổng bình chọn đang mở";
+
+    stepRegistering.classList.add("completed");
+    connector1.classList.add("completed");
+    stepVoting.classList.add("active");
   } else if (status === 2) {
-    statusBadge.textContent = "Đã Kết Thúc (Ended)";
+    statusBadge.textContent = "3. Đã Kết Thúc (Ended)";
     statusBadge.classList.add("status-ended");
+    filterStatusText.textContent = "Hòm phiếu đã khóa";
+
+    stepRegistering.classList.add("completed");
+    connector1.classList.add("completed");
+    stepVoting.classList.add("completed");
+    connector2.classList.add("completed");
+    stepEnded.classList.add("active", "completed");
   }
 }
 
-// Hiển thị thông báo quyền cử tri
-function updateVoterNotice(voterInfo, status) {
-  if (currentAccount.toLowerCase() === contractAdmin.toLowerCase()) {
-    voterStatusNotice.innerHTML = `⭐ Bạn là <strong>Quản trị viên (Admin)</strong> của cuộc bầu cử này.`;
+// Cập nhật Thẻ Cử Tri và Notice Bar
+function updateVoterCardAndNotice(voterInfo, status) {
+  voterCardAddress.textContent = `${currentAccount.substring(0, 8)}...${currentAccount.substring(36)}`;
+  voterCardAddress.title = currentAccount;
+
+  const isAdmin = currentAccount.toLowerCase() === contractAdmin.toLowerCase();
+
+  // Đăng ký
+  if (isAdmin) {
+    voterCardRegistration.innerHTML = `<span class="badge-pill badge-neutral">Quản trị viên (Admin)</span>`;
+  } else if (voterInfo.isRegistered) {
+    voterCardRegistration.innerHTML = `<span class="badge-pill badge-success">Đã Cấp Quyền ✅</span>`;
+  } else {
+    voterCardRegistration.innerHTML = `<span class="badge-pill badge-danger">Chưa Cấp Quyền ❌</span>`;
+  }
+
+  // Bỏ phiếu
+  if (voterInfo.hasVoted) {
+    voterCardVoteStatus.innerHTML = `<span class="badge-pill badge-success">Đã Bầu (Ứng viên #${voterInfo.votedCandidateId}) 🎉</span>`;
+  } else if (status === 1 && voterInfo.isRegistered) {
+    voterCardVoteStatus.innerHTML = `<span class="badge-pill badge-neutral" style="color:#60a5fa;border:1px solid #3b82f6;">Chưa Bỏ Phiếu 🗳️</span>`;
+  } else {
+    voterCardVoteStatus.innerHTML = `<span class="badge-pill badge-neutral">Chưa Bỏ Phiếu</span>`;
+  }
+
+  // Notice Bar Text
+  if (isAdmin) {
+    voterStatusNotice.innerHTML = `
+      <span class="notice-icon">⭐</span>
+      <span class="notice-text">Bạn đang đăng nhập với tư cách <strong>Quản trị viên (Admin)</strong>. Bạn có toàn quyền thiết lập ứng viên, cấp quyền cử tri và điều hành kỳ bầu cử.</span>
+    `;
+  } else if (!voterInfo.isRegistered) {
+    voterStatusNotice.innerHTML = `
+      <span class="notice-icon">⚠️</span>
+      <span class="notice-text">Địa chỉ ví của bạn <strong>chưa được cấp quyền</strong>. Vui lòng liên hệ Admin để thêm địa chỉ ví của bạn vào danh sách được phép bỏ phiếu.</span>
+    `;
+  } else if (voterInfo.hasVoted) {
+    voterStatusNotice.innerHTML = `
+      <span class="notice-icon">✅</span>
+      <span class="notice-text">Bạn đã thực hiện bỏ phiếu thành công cho <strong>Ứng viên #${voterInfo.votedCandidateId}</strong>. Phiếu bầu đã được bảo chứng bất biến trên Blockchain!</span>
+    `;
+  } else if (status === 1) {
+    voterStatusNotice.innerHTML = `
+      <span class="notice-icon">🗳️</span>
+      <span class="notice-text">Bạn đã được cấp quyền và đủ điều kiện bỏ phiếu! Hãy lựa chọn ứng cử viên tin tưởng bên dưới và bấm nút <strong>Bình Chọn</strong>.</span>
+    `;
+  } else if (status === 0) {
+    voterStatusNotice.innerHTML = `
+      <span class="notice-icon">⏳</span>
+      <span class="notice-text">Ví của bạn đã được duyệt quyền! Vui lòng chờ Admin kích hoạt giai đoạn <strong>Bắt đầu bỏ phiếu</strong>.</span>
+    `;
+  } else {
+    voterStatusNotice.innerHTML = `
+      <span class="notice-icon">🔒</span>
+      <span class="notice-text">Cuộc bầu cử đã kết thúc. Hòm phiếu đã được chốt và công bố kết quả chung cuộc.</span>
+    `;
+  }
+}
+
+// Cập nhật quyền trên các nút Admin
+function updateAdminControls(status) {
+  const isAdmin = currentAccount && contractAdmin && (currentAccount.toLowerCase() === contractAdmin.toLowerCase());
+
+  if (!isAdmin) {
+    candidateNameInput.disabled = true;
+    addCandidateBtn.disabled = true;
+    voterAddressInput.disabled = true;
+    registerVoterBtn.disabled = true;
+    startVotingBtn.disabled = true;
+    endVotingBtn.disabled = true;
     return;
   }
 
-  if (!voterInfo.isRegistered) {
-    voterStatusNotice.innerHTML = `⚠️ Địa chỉ ví của bạn <strong>chưa được cấp quyền</strong> bỏ phiếu bởi Quản trị viên.`;
-  } else if (voterInfo.hasVoted) {
-    voterStatusNotice.innerHTML = `✅ Bạn <strong>đã hoàn thành</strong> việc bỏ phiếu (Ứng viên ID: #${voterInfo.votedCandidateId}). Cảm ơn bạn!`;
+  // Nếu là Admin
+  if (status === 0) {
+    candidateNameInput.disabled = false;
+    addCandidateBtn.disabled = false;
+    voterAddressInput.disabled = false;
+    registerVoterBtn.disabled = false;
+    startVotingBtn.disabled = false;
+    endVotingBtn.disabled = true;
   } else if (status === 1) {
-    voterStatusNotice.innerHTML = `🗳️ Bạn <strong>đủ điều kiện</strong> bỏ phiếu! Hãy chọn ứng cử viên yêu thích bên dưới.`;
+    candidateNameInput.disabled = true;
+    addCandidateBtn.disabled = true;
+    voterAddressInput.disabled = true;
+    registerVoterBtn.disabled = true;
+    startVotingBtn.disabled = true;
+    endVotingBtn.disabled = false;
   } else {
-    voterStatusNotice.innerHTML = `⏳ Bạn đã được cấp quyền, vui lòng chờ Admin mở cổng bình chọn.`;
+    // Ended
+    candidateNameInput.disabled = true;
+    addCandidateBtn.disabled = true;
+    voterAddressInput.disabled = true;
+    registerVoterBtn.disabled = true;
+    startVotingBtn.disabled = true;
+    endVotingBtn.disabled = true;
   }
 }
 
-// Hiển thị danh sách thẻ ứng viên
-function renderCandidates(candidates, status) {
+// 5.6 Render Danh Sách Thẻ Ứng Cử Viên kèm Thanh Phần Trăm (Percentage Bar)
+function renderCandidates(candidates, status, totalVotes, highestVoteCount) {
   candidateList.innerHTML = "";
 
   if (candidates.length === 0) {
-    candidateList.innerHTML = `<div class="empty-state">Chưa có ứng viên nào được thêm vào danh sách.</div>`;
+    candidateList.innerHTML = `
+      <div class="empty-state">
+        <p>Chưa có ứng viên nào được ghi nhận trên Blockchain.</p>
+        <span class="subtext">Admin cần thêm ứng viên ở vòng Đăng ký.</span>
+      </div>
+    `;
     return;
   }
 
@@ -278,105 +512,252 @@ function renderCandidates(candidates, status) {
     const card = document.createElement("div");
     card.className = "candidate-card";
 
+    // Tính tỷ lệ phần trăm số phiếu
+    const percentage = totalVotes > 0 ? ((cand.voteCount / totalVotes) * 100).toFixed(1) : 0;
+    const isLeading = (highestVoteCount > 0 && cand.voteCount === highestVoteCount);
+    const isWinnerCard = (status === 2 && isLeading);
+
+    if (isWinnerCard) {
+      card.classList.add("is-winner");
+    }
+
+    // Avatar chữ cái đầu
+    const initial = cand.name.trim().charAt(0).toUpperCase() || "#";
+
+    // Trạng thái nút bầu
     const canVote = (status === 1);
+    let buttonText = "Bình Chọn";
+    let buttonDisabled = !canVote;
+
+    if (status === 0) buttonText = "Chưa Mở Bình Chọn";
+    else if (status === 2) buttonText = "Đã Kết Thúc";
 
     card.innerHTML = `
       <div>
-        <span class="candidate-badge">ỨNG CỬ VIÊN #${cand.id}</span>
+        <div class="cand-top-row">
+          <div class="cand-avatar">${initial}</div>
+          <span class="candidate-badge">ỨNG CỬ VIÊN #${cand.id}</span>
+        </div>
         <h4 class="candidate-name">${cand.name}</h4>
-        <div class="candidate-votes">Số phiếu hiện tại: <strong>${cand.voteCount}</strong></div>
+
+        <!-- Thanh Tiến Độ Phần Trăm Phiếu Bầu -->
+        <div class="vote-progress-wrapper">
+          <div class="progress-header">
+            <span class="vote-count-text"><strong>${cand.voteCount}</strong> phiếu</span>
+            <span class="vote-percentage-text">${percentage}%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-bar-fill ${isLeading ? 'lead-candidate' : ''}" style="width: ${percentage}%"></div>
+          </div>
+        </div>
       </div>
+
       <button 
         class="btn btn-primary full-width vote-btn" 
         data-id="${cand.id}"
-        ${!canVote ? "disabled style='opacity: 0.5; cursor: not-allowed;'" : ""}
+        data-name="${cand.name}"
+        ${buttonDisabled ? "disabled" : ""}
       >
-        Bình Chọn
+        ${buttonText}
       </button>
     `;
 
-    // Bắt sự kiện bấm nút bỏ phiếu
+    // Gắn sự kiện mở Modal Xác Nhận Bỏ Phiếu
     const voteBtn = card.querySelector(".vote-btn");
-    voteBtn.addEventListener("click", () => handleVote(cand.id));
+    if (voteBtn && !buttonDisabled) {
+      voteBtn.addEventListener("click", () => {
+        openVoteModal(cand.id, cand.name);
+      });
+    }
 
     candidateList.appendChild(card);
   });
 }
 
-// 4. Xử lý chức năng bỏ phiếu (Dành cho cử tri)
-async function handleVote(candidateId) {
+// ==============================================================================
+// 6. XỬ LÝ MODAL XÁC NHẬN BỎ PHIẾU
+// ==============================================================================
+function openVoteModal(candidateId, candidateName) {
+  if (!currentAccount) {
+    showToast("Chưa kết nối ví", "Vui lòng bấm nút 'Kết Nối MetaMask' ở góc trên trước khi bình chọn!", "warning", 4000);
+    return;
+  }
+
+  pendingVoteCandidateId = candidateId;
+  modalCandBadge.textContent = `ỨNG CỬ VIÊN #${candidateId}`;
+  modalCandidateName.textContent = candidateName;
+  confirmModal.classList.remove("hidden");
+}
+
+function closeVoteModal() {
+  confirmModal.classList.add("hidden");
+  pendingVoteCandidateId = null;
+}
+
+cancelVoteBtn.addEventListener("click", closeVoteModal);
+confirmModal.addEventListener("click", (e) => {
+  if (e.target === confirmModal) closeVoteModal();
+});
+
+confirmVoteBtn.addEventListener("click", async () => {
+  if (!pendingVoteCandidateId) return;
+  const targetId = pendingVoteCandidateId;
+  closeVoteModal();
+  await executeVote(targetId);
+});
+
+// Thực hiện giao dịch bỏ phiếu trên Blockchain
+async function executeVote(candidateId) {
+  const txToast = showToast(
+    "Đang gửi giao dịch",
+    `Đang yêu cầu MetaMask ký phiếu bầu cho Ứng viên #${candidateId}...`,
+    "loading",
+    0
+  );
+
   try {
     const tx = await votingContract.vote(candidateId);
-    alert("Giao dịch đã gửi lên Blockchain! Vui lòng chờ xác nhận...");
+    showToast("Đã phát sóng giao dịch", `Tx Hash: ${tx.hash.substring(0, 10)}... Đang chờ thợ đào đóng khối...`, "info", 5000);
+
     await tx.wait();
-    alert("Bình chọn thành công!");
+
+    removeToast(txToast);
+    showToast("Bình chọn thành công!", `Phiếu bầu của bạn cho Ứng viên #${candidateId} đã được ghi nhận trên Blockchain!`, "success", 5000);
     await reloadData();
+
   } catch (err) {
-    console.error(err);
-    alert("Thất bại: " + (err.reason || err.message));
+    removeToast(txToast);
+    console.error("Lỗi bỏ phiếu:", err);
+
+    let errorReason = err.reason || err.message;
+    if (err.code === "ACTION_REJECTED" || err.message?.includes("rejected")) {
+      errorReason = "Bạn đã hủy giao dịch trên ví MetaMask.";
+    }
+
+    showToast("Bình chọn thất bại", errorReason, "error", 6000);
   }
 }
 
-// 5. Các hàm thao tác của Admin
+// ==============================================================================
+// 7. CÁC HÀM THAO TÁC CỦA ADMIN (VỚI TOAST NOTIFICATION)
+// ==============================================================================
 addCandidateBtn.addEventListener("click", async () => {
   const name = candidateNameInput.value.trim();
-  if (!name) return alert("Vui lòng nhập tên ứng viên!");
+  if (!name) {
+    showToast("Thiếu thông tin", "Vui lòng nhập họ và tên ứng cử viên!", "warning", 3500);
+    return;
+  }
+
+  const txToast = showToast("Đang thêm ứng viên", `Đang gửi giao dịch thêm "${name}" lên Blockchain...`, "loading", 0);
 
   try {
     const tx = await votingContract.addCandidate(name);
     candidateNameInput.value = "";
     await tx.wait();
-    alert("Đã thêm ứng viên thành công!");
+
+    removeToast(txToast);
+    showToast("Thành công", `Đã thêm ứng cử viên "${name}" thành công!`, "success", 4000);
     await reloadData();
   } catch (err) {
-    alert("Lỗi: " + (err.reason || err.message));
+    removeToast(txToast);
+    showToast("Thêm ứng viên thất bại", err.reason || err.message, "error", 5000);
   }
 });
 
 registerVoterBtn.addEventListener("click", async () => {
   const addr = voterAddressInput.value.trim();
-  if (!ethers.isAddress(addr)) return alert("Địa chỉ ví không đúng định dạng!");
+  if (!ethers.isAddress(addr)) {
+    showToast("Địa chỉ không hợp lệ", "Địa chỉ ví Ethereum phải có định dạng 0x... (42 ký tự)!", "warning", 4000);
+    return;
+  }
+
+  const txToast = showToast("Đang cấp quyền", `Đang ghi nhận quyền cử tri cho ${addr.substring(0, 8)}...`, "loading", 0);
 
   try {
     const tx = await votingContract.registerVoter(addr);
     voterAddressInput.value = "";
     await tx.wait();
-    alert("Đã cấp quyền bỏ phiếu thành công cho: " + addr);
+
+    removeToast(txToast);
+    showToast("Cấp quyền thành công", `Đã cấp quyền bỏ phiếu cho ví ${addr}!`, "success", 4500);
     await reloadData();
   } catch (err) {
-    alert("Lỗi: " + (err.reason || err.message));
+    removeToast(txToast);
+    showToast("Cấp quyền thất bại", err.reason || err.message, "error", 5000);
   }
 });
 
 startVotingBtn.addEventListener("click", async () => {
+  const txToast = showToast("Đang mở hòm phiếu", "Đang chuyển trạng thái sang giai đoạn Bỏ Phiếu...", "loading", 0);
+
   try {
     const tx = await votingContract.startVoting();
     await tx.wait();
-    alert("Cuộc bỏ phiếu đã chính thức BẮT ĐẦU!");
+
+    removeToast(txToast);
+    showToast("Bắt đầu bỏ phiếu", "Cuộc bình chọn đã chính thức BẮT ĐẦU! Cử tri có thể bỏ phiếu ngay bây giờ.", "success", 5000);
     await reloadData();
   } catch (err) {
-    alert("Lỗi: " + (err.reason || err.message));
+    removeToast(txToast);
+    showToast("Lỗi mở cuộc bình chọn", err.reason || err.message, "error", 5000);
   }
 });
 
 endVotingBtn.addEventListener("click", async () => {
+  const txToast = showToast("Đang đóng hòm phiếu", "Đang khóa hòm phiếu và chuyển sang giai đoạn Kết Thúc...", "loading", 0);
+
   try {
     const tx = await votingContract.endVoting();
     await tx.wait();
-    alert("Cuộc bỏ phiếu đã KẾT THÚC! Đã khóa phiếu bầu.");
+
+    removeToast(txToast);
+    showToast("Bầu cử kết thúc", "Cuộc bình chọn đã chính thức KHÓA SỔ! Kết quả đã được công bố trên bảng vinh danh.", "success", 5000);
     await reloadData();
   } catch (err) {
-    alert("Lỗi: " + (err.reason || err.message));
+    removeToast(txToast);
+    showToast("Lỗi đóng cuộc bình chọn", err.reason || err.message, "error", 5000);
   }
 });
 
-// Sự kiện lắng nghe ví
+// ==============================================================================
+// 8. TIỆN ÍCH PHỤ TRỢ (COPY ĐỊA CHỈ, LÀM MỚI, LẮNG NGHE METAMASK)
+// ==============================================================================
+copyAddressBtn.addEventListener("click", () => {
+  if (!currentAccount) return;
+  navigator.clipboard.writeText(currentAccount).then(() => {
+    showToast("Đã sao chép", "Đã chép địa chỉ ví vào Clipboard!", "info", 2500);
+  });
+});
+
+userAccountSpan.addEventListener("click", () => {
+  if (!currentAccount) return;
+  navigator.clipboard.writeText(currentAccount).then(() => {
+    showToast("Đã sao chép", "Đã chép địa chỉ ví vào Clipboard!", "info", 2500);
+  });
+});
+
+refreshDataBtn.addEventListener("click", async () => {
+  if (!votingContract) {
+    showToast("Thông báo", "Vui lòng kết nối ví MetaMask trước!", "info", 2500);
+    return;
+  }
+  showToast("Đang làm mới", "Đang truy vấn dữ liệu mới nhất từ Blockchain...", "info", 1500);
+  await reloadData();
+});
+
 connectWalletBtn.addEventListener("click", connectWallet);
 
-if (window.ethereum) {
-  window.ethereum.on("accountsChanged", () => window.location.reload());
-  window.ethereum.on("chainChanged", () => window.location.reload());
+if (typeof window !== "undefined" && window.ethereum) {
+  window.ethereum.on("accountsChanged", (accounts) => {
+    console.log("[MetaMask] Tài khoản đã thay đổi:", accounts);
+    window.location.reload();
+  });
+
+  window.ethereum.on("chainChanged", (chainId) => {
+    console.log("[MetaMask] Mạng đã thay đổi:", chainId);
+    window.location.reload();
+  });
 }
 
-// Khởi chạy
+// Khởi chạy nạp file cấu hình khi trang tải xong
 loadConfig();

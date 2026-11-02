@@ -24,7 +24,7 @@ Hệ thống hoạt động theo mô hình DApp 3 tầng thuần phi tập trung
 +-------------------------------------------------------------------+
 |               GIAO DIỆN NGƯỜI DÙNG (FRONTEND)                     |
 |  - HTML5 / CSS3 (Giao diện Dark Mode & Glassmorphism)             |
-|  - Vanilla JavaScript (Xử lý DOM, hiển thị trạng thái)            |
+|  - Vanilla JavaScript (DOM Engine, Toast Notification, Modals)    |
 +---------------------------------+---------------------------------+
                                   |
                    Ethers.js v6 & MetaMask Wallet
@@ -44,16 +44,16 @@ Hệ thống hoạt động theo mô hình DApp 3 tầng thuần phi tập trung
 |  - Ngôn ngữ: Solidity (contracts/Voting.sol)                      |
 |  - Quản lý trạng thái: Registering -> Voting -> Ended             |
 |  - Kiểm soát phân quyền: onlyAdmin, checkStatus                   |
-+-------------------------------------------------------------------+
++-----------------------------------+
 ```
 
 ### 🛠️ Ngăn xếp công nghệ (Tech Stack)
 | Thành phần | Công nghệ sử dụng | Mục đích |
 | :--- | :--- | :--- |
-| **Smart Contract** | Solidity (`^0.8.0`) | Thực thi logic nghiệp vụ, lưu trữ phiếu bầu và tính toán người thắng cuộc |
+| **Smart Contract** | Solidity (`^0.8.20`) | Thực thi logic nghiệp vụ, lưu trữ phiếu bầu và tính toán người thắng cuộc |
 | **Blockchain Framework** | Hardhat (`v2.29.1`) | Môi trường biên dịch, kiểm thử tự động và giả lập Local Blockchain Node |
 | **Web3 Client** | Ethers.js (`v6.7.0`) | Kết nối ví MetaMask, ký giao dịch và đọc dữ liệu on-chain |
-| **Frontend UI** | HTML5, CSS3, Vanilla JS | Giao diện thân thiện người dùng, hỗ trợ Admin Dashboard và Voter Area |
+| **Frontend UI** | HTML5, CSS3, Vanilla JS | Giao diện Dark Glassmorphism, Toast Notifications, Percentage Bars |
 
 ---
 
@@ -91,8 +91,8 @@ Cuộc bầu cử trải qua 3 giai đoạn quản lý nghiêm ngặt thông qua
 | :--- | :--- | :--- | :--- |
 | **Thành viên 1** | **Smart Contract Engineer** | • Thiết kế dữ liệu (`Candidate`, `Voter`), logic máy trạng thái.<br>• Viết hàm thêm ứng viên, cấp quyền cử tri, bỏ phiếu, tìm người thắng.<br>• Cài đặt bảo mật (`onlyAdmin`, kiểm tra giai đoạn). | `contracts/Voting.sol` |
 | **Thành viên 2** | **Web3 Middleware Engineer** | • Xây dựng kịch bản triển khai (`scripts/deploy.js`).<br>• Tự động đồng bộ `contract-config.json` sang frontend.<br>• Tích hợp Ethers.js, kết nối MetaMask, ký & gửi giao dịch on-chain. | `scripts/deploy.js`<br>`frontend/app.js` (Web3 logic) |
-| **Thành viên 3** | **Frontend UI/UX Engineer** | • Thiết kế giao diện HTML/CSS phong cách hiện đại.<br>• Bố cục Dashboard cho Admin & Danh sách ứng viên cho Cử tri.<br>• Xử lý DOM, hiển thị trạng thái giao dịch và banner vinh danh. | `frontend/index.html`<br>`frontend/style.css`<br>`frontend/app.js` (DOM logic) |
-| **Cả nhóm** | **QA & Báo cáo đồ án** | • Viết và chạy bộ Unit Test tự động (Mocha/Chai).<br>• Thử nghiệm tích hợp E2E trên trình duyệt với MetaMask.<br>• Soạn thảo báo cáo đồ án và chuẩn bị slide bảo vệ. | `test/Voting.test.js`<br>Báo cáo & Slide |
+| **Thành viên 3** | **Frontend UI/UX Engineer** | • Thiết kế giao diện HTML/CSS phong cách Dark Glassmorphism hiện đại.<br>• Xây dựng hệ thống Toast Notifications & Modal xác nhận thay thế `alert()`.<br>• Hiển thị thanh phần trăm phiếu bầu, thẻ cử tri và bục vinh danh. | `frontend/index.html`<br>`frontend/style.css`<br>`frontend/app.js` (DOM logic) |
+| **Cả nhóm** | **QA & Báo cáo đồ án** | • Viết và chạy bộ Unit Test tự động (Mocha/Chai - 27 test cases).<br>• Thử nghiệm tích hợp E2E trên trình duyệt với MetaMask.<br>• Soạn thảo báo cáo đồ án và chuẩn bị slide bảo vệ. | `test/Voting.test.js`<br>Báo cáo & Slide |
 
 ---
 
@@ -103,12 +103,13 @@ BINHCHONONLINE/
 ├── contracts/
 │   └── Voting.sol             # Hợp đồng thông minh bình chọn (Solidity)
 ├── scripts/
-│   └── deploy.js              # Kịch bản biên dịch & triển khai lên Blockchain
+│   ├── deploy.js              # Kịch bản biên dịch & triển khai lên Blockchain
+│   └── seed.js                # Kịch bản khởi tạo dữ liệu mẫu tự động phục vụ demo
 ├── test/
-│   └── Voting.test.js         # Bộ kiểm thử tự động (24 Unit Test cases toàn diện)
+│   └── Voting.test.js         # Bộ kiểm thử tự động (27 Unit Test cases toàn diện)
 ├── frontend/
 │   ├── index.html             # Giao diện chính của ứng dụng
-│   ├── style.css              # Định dạng giao diện Dark Mode / Card UI
+│   ├── style.css              # Định dạng giao diện Dark Mode / Glassmorphism
 │   ├── app.js                 # Logic kết nối Web3, MetaMask và tương tác DOM
 │   └── contract-config.json   # Cấu hình địa chỉ contract sau khi deploy (tự sinh)
 ├── hardhat.config.js          # Cấu hình môi trường mạng và trình biên dịch Solidity
@@ -116,6 +117,7 @@ BINHCHONONLINE/
 ├── task_plan.md               # Kế hoạch phát triển chi tiết dự án (7 giai đoạn)
 ├── findings.md                # Ghi nhận phân tích kỹ thuật và quyết định kiến trúc
 ├── progress.md                # Nhật ký tiến độ thực thi dự án
+├── README_FRONTEND.md         # Cẩm nang bảo vệ đồ án chi tiết dành cho Thành viên 3
 └── README.md                  # Tài liệu giới thiệu tổng quan đồ án
 ```
 
@@ -137,9 +139,9 @@ npx hardhat compile
 
 ### Bước 3: Chạy bộ kiểm thử tự động (Unit Test)
 ```bash
-npx hardhat test
+npm test
 ```
-*(Kết quả mong đợi: 24/24 passing test cases chứng minh logic Smart Contract vận hành chính xác 100%).*
+*(Kết quả mong đợi: 27/27 passing test cases chứng minh logic Smart Contract vận hành chính xác 100%).*
 
 ### Bước 4: Khởi chạy mạng Blockchain cục bộ & Triển khai
 Mở **Terminal 1** để chạy mạng giả lập Hardhat:
@@ -150,9 +152,11 @@ npx hardhat node
 
 Mở **Terminal 2** để thực hiện triển khai hợp đồng:
 ```bash
-npx hardhat run scripts/deploy.js --network localhost
+npm run deploy:local
 ```
 *(Script sẽ tự động ghi địa chỉ hợp đồng vào file `frontend/contract-config.json`).*
+
+*(Tùy chọn: Chạy `npm run seed` để tự động khởi tạo ngay 3 ứng viên, cấp quyền 4 cử tri và bỏ phiếu mẫu cho buổi demo nhanh gọn).*
 
 ### Bước 5: Trải nghiệm trên Giao diện Web
 1. Khởi chạy `frontend/index.html` bằng **Live Server** (tiện ích mở rộng trên VS Code) hoặc mở trực tiếp trên trình duyệt.
@@ -167,5 +171,5 @@ npx hardhat run scripts/deploy.js --network localhost
 
 ## 📖 7. TÀI LIỆU GIẢI THÍCH MÃ NGUỒN (DÀNH CHO BẢO VỆ ĐỒ ÁN)
 
-- **Dành cho Thành viên 1 (Smart Contract Engineer):** Đã biên soạn cẩm nang chi tiết tại [README_SMART_CONTRACT.md](file:///d:/Nam4_HK1/IOT/ThucHanh/Binhchononline/README_SMART_CONTRACT.md) giải thích cặn kẽ 7 cụm logic của `contracts/Voting.sol` cùng các câu hỏi phản biện mẫu thường gặp của hội đồng chấm thi.
-
+- **Dành cho Thành viên 1 (Smart Contract Engineer):** Cẩm nang giải thích cặn kẽ 7 cụm logic của `contracts/Voting.sol` cùng các câu hỏi phản biện mẫu thường gặp của hội đồng chấm thi.
+- **Dành cho Thành viên 3 (Frontend UI/UX Engineer):** Đã biên soạn cẩm nang chi tiết tại [README_FRONTEND.md](file:///d:/DoanBlockchain/Binhchononline/README_FRONTEND.md) giải thích kiến trúc giao diện HTML/CSS, Toast Notifications, Modal xác nhận, thanh tiến độ phần trăm và 5 câu hỏi phản biện bảo vệ đồ án thường gặp.
