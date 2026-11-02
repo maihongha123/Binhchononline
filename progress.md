@@ -25,8 +25,9 @@
   - Thêm test chặn tên ứng viên rỗng, chặn ví rỗng `0x0`, chặn ví lạ gọi hàm admin.
   - Thêm test kiểm tra phát sự kiện thời gian thực (`CandidateAdded`, `VoteCasted`, `StatusChanged`).
   - Chạy `npx hardhat test` xác nhận **24/24 unit tests pass 100% (1s)**.
+  - **Thành viên 2:** Bổ sung nhóm test số 7 "Tương tác Đa tài khoản & Tích hợp Web3", nâng tổng số test lên **27/27 unit tests pass 100%**.
 
-## Test Results (Hiện tại: 24/24 PASS)
+## Test Results (Hiện tại: 27/27 PASS)
 | Nhóm Kiểm Thử | Mục tiêu kiểm thử | Dự kiến | Thực tế | Trạng thái |
 | :--- | :--- | :--- | :--- | :--- |
 | **1. Khởi tạo hợp đồng** | Deployer là Admin, tên bầu cử đúng, status = Registering (0) | 3/3 | 3/3 | ✅ PASS |
@@ -35,6 +36,7 @@
 | **4. Quy trình Bỏ phiếu & Chống gian lận** | Chặn vote trước khi mở, vote hợp lệ, chống vote 2 lần, chặn người lạ, chặn ID sai, chặn vote khi đã đóng | 6/6 | 6/6 | ✅ PASS |
 | **5. Kết thúc & Công bố kết quả** | Chặn getWinner khi chưa đóng, tìm đúng người thắng, tính đúng totalVotes & count | 3/3 | 3/3 | ✅ PASS |
 | **6. Phát sự kiện (Events)** | Bắn event CandidateAdded, VoteCasted, StatusChanged | 3/3 | 3/3 | ✅ PASS |
+| **7. Đa tài khoản & Web3 (TV2)** | Mô phỏng 5 ví đồng thời, độc lập dữ liệu ví, chặn ví lạ xen kẽ | 3/3 | 3/3 | ✅ PASS |
 
 ## 5-Question Reboot Check
 | Câu hỏi | Trả lời |

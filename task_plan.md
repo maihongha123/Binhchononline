@@ -28,6 +28,7 @@ Phase 3: Comprehensive Testing & Security Verification (Hoàn thành Phase 3 - S
 - [x] Viết test cho kiểm soát máy trạng thái, kiểm tra dữ liệu đầu vào (chuỗi rỗng, địa chỉ ví 0x0)
 - [x] Viết test mô phỏng tấn công: cử tri cố tình gọi hàm admin, cử tri bỏ phiếu 2 lần, gọi vote khi chưa mở, gọi vote sau khi đóng
 - [x] Kiểm tra phát sự kiện thời gian thực (Events: CandidateAdded, VoteCasted, StatusChanged)
+- [x] **Thành viên 2:** Mở rộng lên 27 test cases - Viết kịch bản kiểm thử luồng đa tài khoản ví hoạt động đồng thời bằng `ethers.getSigners()` (Độc lập trạng thái giữa các ví, tính toán số phiếu chính xác)
 - **Status:** complete
 
 ### Phase 4: Web3 Middleware & Automated Deployment (Hoàn thiện kết nối Web3 & Tự động hóa - Thành viên 2)
