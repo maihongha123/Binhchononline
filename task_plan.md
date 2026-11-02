@@ -4,7 +4,7 @@
 Xây dựng, hoàn thiện, kiểm thử và đóng gói toàn diện hệ thống DApp bình chọn trực tuyến trên nền tảng Blockchain Ethereum/Solidity với giao diện Web3 trực quan, phục vụ báo cáo và bảo vệ đồ án môn học đạt kết quả cao nhất.
 
 ## Current Phase
-Phase 1: Requirements & Codebase Audit (Hoàn thành khảo sát & lập kế hoạch tổng thể)
+Phase 3: Comprehensive Testing & Security Verification (Hoàn thành Phase 3 - Sẵn sàng cho Phase 4 của Thành viên 2)
 
 ## Phases
 
@@ -16,28 +16,27 @@ Phase 1: Requirements & Codebase Audit (Hoàn thành khảo sát & lập kế ho
 - **Status:** complete
 
 ### Phase 2: Smart Contract Hardening & Edge Cases (Gia cố Hợp đồng thông minh)
-- [ ] Rà soát logic hòa phiếu trong `getWinner()` (xử lý khi có nhiều ứng viên cùng số phiếu cao nhất)
-- [ ] Bổ sung kiểm tra dữ liệu đầu vào: chuỗi rỗng, địa chỉ ví cử tri trùng lặp, giới hạn số lượng ứng viên hợp lý
-- [ ] Kiểm tra kiểm soát quyền truy cập (`onlyAdmin`, trạng thái `WorkflowStatus`) đảm bảo không thể bypass
-- [ ] Bổ sung các event chi tiết hỗ trợ đồng bộ thời gian thực cho Frontend
-- [ ] Tối ưu chi phí Gas (sử dụng calldata, packing biến hợp lý nếu cần)
-- **Status: pending
+- [x] Tinh giản logic Smart Contract rõ ràng, tường minh, không nén code khó đọc
+- [x] Rà soát và chuẩn hóa kiểm tra dữ liệu đầu vào: chuỗi rỗng, địa chỉ ví trùng lặp
+- [x] Đảm bảo kiểm soát quyền truy cập (`onlyAdmin`, `WorkflowStatus`) an toàn
+- [x] Giữ đầy đủ các Events hỗ trợ Web3 Frontend
+- **Status:** complete
 
 ### Phase 3: Comprehensive Testing & Security Verification (Kiểm thử tự động & Bảo mật)
-- [ ] Mở rộng bộ Unit Test từ 12 lên 20+ test cases bao phủ toàn bộ các edge cases
-- [ ] Viết test cho kịch bản hòa phiếu, đăng ký cử tri hàng loạt, chuyển đổi sai trạng thái
-- [ ] Viết test mô phỏng tấn công: cử tri cố tình gọi hàm admin, cử tri bỏ phiếu 2 lần, gọi vote khi chưa mở
-- [ ] Đo lường độ bao phủ mã nguồn (Coverage report với `solidity-coverage` nếu cần)
-- **Status:** pending
+- [x] Mở rộng bộ Unit Test từ 12 lên 24 test cases bao phủ toàn bộ các edge cases
+- [x] Viết test cho kiểm soát máy trạng thái, kiểm tra dữ liệu đầu vào (chuỗi rỗng, địa chỉ ví 0x0)
+- [x] Viết test mô phỏng tấn công: cử tri cố tình gọi hàm admin, cử tri bỏ phiếu 2 lần, gọi vote khi chưa mở, gọi vote sau khi đóng
+- [x] Kiểm tra phát sự kiện thời gian thực (Events: CandidateAdded, VoteCasted, StatusChanged)
+- **Status:** complete
 
-### Phase 4: Web3 Middleware & Automated Deployment (Hoàn thiện kết nối Web3 & Tự động hóa)
+### Phase 4: Web3 Middleware & Automated Deployment (Hoàn thiện kết nối Web3 & Tự động hóa - Thành viên 2)
 - [ ] Chuẩn hóa `scripts/deploy.js`: tự động xuất file ABI đầy đủ và địa chỉ sang `frontend/contract-config.json`
 - [ ] Thêm cấu hình mạng local (Hardhat Node: 127.0.0.1:8545) và testnet (Sepolia/Amoy) trong `hardhat.config.js`
 - [ ] Cải thiện xử lý tài khoản trong `frontend/app.js`: bắt sự kiện đổi tài khoản `accountsChanged`, đổi mạng `chainChanged`
 - [ ] Lắng nghe sự kiện On-Chain thời gian thực (`votingContract.on("VoteCasted", ...)`), tự động reload dữ liệu không cần F5
 - **Status:** pending
 
-### Phase 5: Modern UI/UX Enhancement (Nâng cấp Giao diện & Trải nghiệm Người dùng)
+### Phase 5: Modern UI/UX Enhancement (Nâng cấp Giao diện & Trải nghiệm Người dùng - Thành viên 3)
 - [ ] Thay thế hoàn toàn các hàm `alert()` bằng hệ thống Toast Notification / Modal thông báo hiện đại
 - [ ] Bổ sung thanh tiến độ phần trăm phiếu bầu cho từng ứng cử viên (Vote Percentage Bar)
 - [ ] Hiển thị trực quan trạng thái ví cử tri: Đã đăng ký hay chưa, Đã vote hay chưa, Đang ở vòng nào
@@ -45,13 +44,13 @@ Phase 1: Requirements & Codebase Audit (Hoàn thành khảo sát & lập kế ho
 - [ ] Tối ưu hiển thị responsive trên thiết bị di động và máy tính bảng
 - **Status:** pending
 
-### Phase 6: System Integration & End-to-End Simulation (Tích hợp Hệ thống & Mô phỏng E2E)
+### Phase 6: System Integration & End-to-End Simulation (Tích hợp Hệ thống & Mô phỏng E2E - Cả nhóm)
 - [ ] Thiết lập kịch bản demo mẫu: Tạo cuộc bầu cử -> Thêm 3 ứng viên -> Đăng ký 3 cử tri -> Mở bình chọn -> Vote -> Đóng bầu cử -> Xem kết quả
 - [ ] Viết script `scripts/seed.js` để tự động khởi tạo dữ liệu mẫu cho việc thuyết trình không bị mất thời gian
 - [ ] Kiểm thử E2E trên trình duyệt với MetaMask (kiểm tra từ chối ký, sai số gas, sai mạng)
 - **Status:** pending
 
-### Phase 7: Project Documentation & Presentation Prep (Tài liệu hóa, Báo cáo & Thuyết trình)
+### Phase 7: Project Documentation & Presentation Prep (Tài liệu hóa, Báo cáo & Thuyết trình - Cả nhóm)
 - [ ] Cập nhật toàn diện `README.md` với hướng dẫn cài đặt từng bước, sơ đồ kiến trúc hệ thống
 - [ ] Soạn thảo khung Báo cáo Đồ án chi tiết (Word / Markdown) gồm lý thuyết Blockchain, thiết kế Smart Contract, kết quả thử nghiệm
 - [ ] Chuẩn bị kịch bản thuyết trình và slide demo cho 3 thành viên theo đúng phân công nhiệm vụ

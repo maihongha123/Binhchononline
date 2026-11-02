@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-describe("KIỂM THỬ HỆ THỐNG BÌNH CHỌN (VOTING SMART CONTRACT)", function () {
+describe("KIỂM THỬ TOÀN DIỆN HỆ THỐNG BÌNH CHỌN (VOTING SMART CONTRACT)", function () {
   let voting;
   let admin, voter1, voter2, stranger;
 
@@ -15,6 +15,9 @@ describe("KIỂM THỬ HỆ THỐNG BÌNH CHỌN (VOTING SMART CONTRACT)", funct
     await voting.waitForDeployment();
   });
 
+  // =================================================================
+  // 1. KHỞI TẠO HỢP ĐỒNG
+  // =================================================================
   describe("1. Khởi tạo hợp đồng", function () {
     it("Người triển khai hợp đồng phải là Quản trị viên (Admin)", async function () {
       expect(await voting.admin()).to.equal(admin.address);
@@ -29,7 +32,10 @@ describe("KIỂM THỬ HỆ THỐNG BÌNH CHỌN (VOTING SMART CONTRACT)", funct
     });
   });
 
-  describe("2. Quản lý Ứng viên & Cử tri (Dành cho Admin)", function () {
+  // =================================================================
+  // 2. QUẢN LÝ ỨNG VIÊN & CỬ TRI (DÀNH CHO ADMIN)
+  // =================================================================
+  describe("2. Quản lý Ứng viên & Cử tri", function () {
     it("Admin có thể thêm ứng cử viên thành công", async function () {
       await voting.connect(admin).addCandidate("Nguyen Van A");
       await voting.connect(admin).addCandidate("Tran Thi B");
@@ -38,6 +44,12 @@ describe("KIỂM THỬ HỆ THỐNG BÌNH CHỌN (VOTING SMART CONTRACT)", funct
       expect(candidates.length).to.equal(2);
       expect(candidates[0].name).to.equal("Nguyen Van A");
       expect(candidates[1].name).to.equal("Tran Thi B");
+    });
+
+    it("Không thể thêm ứng cử viên với tên để trống", async function () {
+      await expect(
+        voting.connect(admin).addCandidate("")
+      ).to.be.revertedWith("Ten ung vien khong duoc de trong!");
     });
 
     it("Người không phải Admin KHÔNG ĐƯỢC PHÉP thêm ứng cử viên", async function () {
@@ -53,6 +65,12 @@ describe("KIỂM THỬ HỆ THỐNG BÌNH CHỌN (VOTING SMART CONTRACT)", funct
       expect(v1.hasVoted).to.be.false;
     });
 
+    it("Không thể cấp quyền cho địa chỉ ví rỗng (0x0)", async function () {
+      await expect(
+        voting.connect(admin).registerVoter(ethers.ZeroAddress)
+      ).to.be.revertedWith("Dia chi vi khong hop le!");
+    });
+
     it("Không thể đăng ký cùng 1 cử tri 2 lần", async function () {
       await voting.connect(admin).registerVoter(voter1.address);
       await expect(
@@ -61,9 +79,40 @@ describe("KIỂM THỬ HỆ THỐNG BÌNH CHỌN (VOTING SMART CONTRACT)", funct
     });
   });
 
-  describe("3. Quy trình Bình chọn (Voting Flow)", function () {
+  // =================================================================
+  // 3. KIỂM SOÁT PHÂN QUYỀN ADMIN & MÁY TRẠNG THÁI
+  // =================================================================
+  describe("3. Phân quyền Admin & Máy trạng thái", function () {
+    it("Không thể bắt đầu bình chọn nếu có ít hơn 2 ứng cử viên", async function () {
+      await voting.connect(admin).addCandidate("Nguyen Van A");
+      await expect(
+        voting.connect(admin).startVoting()
+      ).to.be.revertedWith("Can it nhat 2 ung vien de bat dau cuoc bau cu!");
+    });
+
+    it("Người lạ KHÔNG ĐƯỢC PHÉP bắt đầu cuộc bình chọn", async function () {
+      await voting.connect(admin).addCandidate("Nguyen Van A");
+      await voting.connect(admin).addCandidate("Tran Thi B");
+      await expect(
+        voting.connect(stranger).startVoting()
+      ).to.be.revertedWith("Chi nguoi quan tri (Admin) moi co quyen thuc hien!");
+    });
+
+    it("Người lạ KHÔNG ĐƯỢC PHÉP kết thúc cuộc bình chọn", async function () {
+      await voting.connect(admin).addCandidate("Nguyen Van A");
+      await voting.connect(admin).addCandidate("Tran Thi B");
+      await voting.connect(admin).startVoting();
+      await expect(
+        voting.connect(stranger).endVoting()
+      ).to.be.revertedWith("Chi nguoi quan tri (Admin) moi co quyen thuc hien!");
+    });
+  });
+
+  // =================================================================
+  // 4. QUY TRÌNH BÌNH CHỌN & CHỐNG GIAN LẬN
+  // =================================================================
+  describe("4. Quy trình Bình chọn & Chống gian lận", function () {
     beforeEach(async function () {
-      // Chuẩn bị dữ liệu ban đầu
       await voting.connect(admin).addCandidate("Nguyen Van A");
       await voting.connect(admin).addCandidate("Tran Thi B");
       await voting.connect(admin).registerVoter(voter1.address);
@@ -77,10 +126,7 @@ describe("KIỂM THỬ HỆ THỐNG BÌNH CHỌN (VOTING SMART CONTRACT)", funct
     });
 
     it("Cử tri hợp lệ có thể bỏ phiếu khi trạng thái là Voting", async function () {
-      // Admin bắt đầu cuộc bầu cử
       await voting.connect(admin).startVoting();
-
-      // voter1 bỏ phiếu cho ứng viên 1 (Nguyen Van A)
       await voting.connect(voter1).vote(1);
 
       const candidates = await voting.getCandidates();
@@ -93,7 +139,6 @@ describe("KIỂM THỬ HỆ THỐNG BÌNH CHỌN (VOTING SMART CONTRACT)", funct
 
     it("Một cử tri KHÔNG THỂ bỏ phiếu 2 lần (Chống gian lận phiếu)", async function () {
       await voting.connect(admin).startVoting();
-
       await voting.connect(voter1).vote(1);
 
       await expect(
@@ -103,32 +148,95 @@ describe("KIỂM THỬ HỆ THỐNG BÌNH CHỌN (VOTING SMART CONTRACT)", funct
 
     it("Người lạ chưa được cấp quyền KHÔNG ĐƯỢC PHÉP bỏ phiếu", async function () {
       await voting.connect(admin).startVoting();
-
       await expect(
         voting.connect(stranger).vote(1)
       ).to.be.revertedWith("Ban khong co ten trong danh sach duoc phep bo phieu!");
     });
+
+    it("Không thể bỏ phiếu cho ứng cử viên không tồn tại (ID không hợp lệ)", async function () {
+      await voting.connect(admin).startVoting();
+      await expect(
+        voting.connect(voter1).vote(999)
+      ).to.be.revertedWith("Ma so ung vien khong hop le!");
+      await expect(
+        voting.connect(voter1).vote(0)
+      ).to.be.revertedWith("Ma so ung vien khong hop le!");
+    });
+
+    it("Không thể bỏ phiếu sau khi cuộc bầu cử đã kết thúc (Ended)", async function () {
+      await voting.connect(admin).startVoting();
+      await voting.connect(admin).endVoting();
+
+      await expect(
+        voting.connect(voter1).vote(1)
+      ).to.be.revertedWith("Chuc nang khong the thuc hien o giai doan nay!");
+    });
   });
 
-  describe("4. Kết thúc và Công bố người chiến thắng", function () {
-    it("Xác định chính xác ứng cử viên có số phiếu cao nhất", async function () {
+  // =================================================================
+  // 5. KẾT THÚC VÀ CÔNG BỐ KẾT QUẢ
+  // =================================================================
+  describe("5. Kết thúc và Công bố kết quả", function () {
+    beforeEach(async function () {
       await voting.connect(admin).addCandidate("Nguyen Van A");
       await voting.connect(admin).addCandidate("Tran Thi B");
       await voting.connect(admin).registerVoter(voter1.address);
       await voting.connect(admin).registerVoter(voter2.address);
+    });
 
+    it("Không thể gọi getWinner() khi cuộc bầu cử chưa kết thúc", async function () {
+      await expect(
+        voting.getWinner()
+      ).to.be.revertedWith("Chuc nang khong the thuc hien o giai doan nay!");
+    });
+
+    it("Xác định chính xác ứng cử viên có số phiếu cao nhất", async function () {
       await voting.connect(admin).startVoting();
-
-      // voter1 và voter2 đều bầu cho Tran Thi B (Candidate ID 2)
       await voting.connect(voter1).vote(2);
       await voting.connect(voter2).vote(2);
-
-      // Kết thúc bỏ phiếu
       await voting.connect(admin).endVoting();
 
       const [winnerName, highestVote] = await voting.getWinner();
       expect(winnerName).to.equal("Tran Thi B");
       expect(highestVote).to.equal(2);
+    });
+
+    it("Tổng số phiếu (totalVotes) và số lượng ứng cử viên được tính toán chính xác", async function () {
+      expect(await voting.getCandidatesCount()).to.equal(2);
+      await voting.connect(admin).startVoting();
+      await voting.connect(voter1).vote(1);
+      expect(await voting.totalVotes()).to.equal(1);
+    });
+  });
+
+  // =================================================================
+  // 6. PHÁT SỰ KIỆN (EVENTS)
+  // =================================================================
+  describe("6. Phát sự kiện (Events)", function () {
+    it("Phát sự kiện CandidateAdded khi thêm ứng viên", async function () {
+      await expect(voting.connect(admin).addCandidate("Nguyen Van A"))
+        .to.emit(voting, "CandidateAdded")
+        .withArgs(1, "Nguyen Van A");
+    });
+
+    it("Phát sự kiện VoteCasted khi cử tri bỏ phiếu", async function () {
+      await voting.connect(admin).addCandidate("Nguyen Van A");
+      await voting.connect(admin).addCandidate("Tran Thi B");
+      await voting.connect(admin).registerVoter(voter1.address);
+      await voting.connect(admin).startVoting();
+
+      await expect(voting.connect(voter1).vote(1))
+        .to.emit(voting, "VoteCasted")
+        .withArgs(voter1.address, 1);
+    });
+
+    it("Phát sự kiện StatusChanged khi thay đổi giai đoạn", async function () {
+      await voting.connect(admin).addCandidate("Nguyen Van A");
+      await voting.connect(admin).addCandidate("Tran Thi B");
+
+      await expect(voting.connect(admin).startVoting())
+        .to.emit(voting, "StatusChanged")
+        .withArgs(0, 1);
     });
   });
 });

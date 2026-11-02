@@ -105,7 +105,7 @@ BINHCHONONLINE/
 ├── scripts/
 │   └── deploy.js              # Kịch bản biên dịch & triển khai lên Blockchain
 ├── test/
-│   └── Voting.test.js         # Bộ kiểm thử tự động (12+ Unit Test cases)
+│   └── Voting.test.js         # Bộ kiểm thử tự động (24 Unit Test cases toàn diện)
 ├── frontend/
 │   ├── index.html             # Giao diện chính của ứng dụng
 │   ├── style.css              # Định dạng giao diện Dark Mode / Card UI
@@ -139,7 +139,7 @@ npx hardhat compile
 ```bash
 npx hardhat test
 ```
-*(Kết quả mong đợi: 12/12 passing test cases chứng minh logic Smart Contract vận hành chính xác).*
+*(Kết quả mong đợi: 24/24 passing test cases chứng minh logic Smart Contract vận hành chính xác 100%).*
 
 ### Bước 4: Khởi chạy mạng Blockchain cục bộ & Triển khai
 Mở **Terminal 1** để chạy mạng giả lập Hardhat:
@@ -162,3 +162,10 @@ npx hardhat run scripts/deploy.js --network localhost
    - **Chain ID:** `31337`
    - **Currency Symbol:** `ETH`
 3. Nhập (Import) Private Key của `Account #0` (Admin) và `Account #1`, `Account #2` (Cử tri) từ Terminal 1 vào MetaMask để tiến hành thử nghiệm toàn bộ quy trình bình chọn.
+
+---
+
+## 📖 7. TÀI LIỆU GIẢI THÍCH MÃ NGUỒN (DÀNH CHO BẢO VỆ ĐỒ ÁN)
+
+- **Dành cho Thành viên 1 (Smart Contract Engineer):** Đã biên soạn cẩm nang chi tiết tại [README_SMART_CONTRACT.md](file:///d:/Nam4_HK1/IOT/ThucHanh/Binhchononline/README_SMART_CONTRACT.md) giải thích cặn kẽ 7 cụm logic của `contracts/Voting.sol` cùng các câu hỏi phản biện mẫu thường gặp của hội đồng chấm thi.
+
