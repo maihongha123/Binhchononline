@@ -2,7 +2,7 @@
 // DỰ ÁN BÌNH CHỌN BLOCKCHAIN (DAPP)
 // PHÂN HỆ: WEB3 MIDDLEWARE & GIAO TIẾP BLOCKCHAIN
 // TÁC GIẢ CHỊU TRÁCH NHIỆM: THÀNH VIÊN 2 (Web3 Middleware & Deployment Engineer)
-// PHASE 4: Xây dựng cơ chế tự động chuyển mạng Sepolia Testnet (0xaa36a7)
+// PHASE 5: Triển khai các phương thức giao dịch on-chain executeVote và Admin calls
 // ==============================================================================
 
 class Web3Service {
@@ -320,57 +320,83 @@ class Web3Service {
     };
   }
 
+  // ==============================================================================
+  // PHASE 5: CÁC PHƯƠNG THỨC GIAO DỊCH ON-CHAIN (TRANSACTION WRAPPERS)
+  // ==============================================================================
+
   /**
-   * Giao dịch: Bỏ phiếu cho ứng viên
+   * Phương thức: Bỏ phiếu cho một ứng cử viên (Cử tri thực hiện)
+   * @param {number} candidateId - Mã định danh của ứng viên (1, 2, 3...)
    */
   async vote(candidateId) {
     if (!this.contract) throw new Error("Chưa kết nối ví!");
+    if (!candidateId || candidateId <= 0) {
+      throw new Error("Mã ứng viên không hợp lệ!");
+    }
+    console.log(`[Web3Service - Phase 5] Bắt đầu gửi giao dịch bỏ phiếu cho Ứng viên #${candidateId}...`);
     const tx = await this.contract.vote(candidateId);
+    console.log(`[Web3Service - Phase 5] Giao dịch đã phát sóng (TxHash: ${tx.hash}). Đang đợi đóng khối...`);
     const receipt = await tx.wait();
-    return { txHash: tx.hash, receipt };
+    console.log(`[Web3Service - Phase 5] Giao dịch thành công tại Block #${receipt.blockNumber}!`);
+    return { txHash: tx.hash, receipt, blockNumber: receipt.blockNumber };
   }
 
   /**
-   * Giao dịch Admin: Thêm ứng viên mới
+   * Phương thức Admin: Thêm ứng viên mới vào danh sách
+   * @param {string} name - Họ và tên ứng cử viên
    */
   async addCandidate(name) {
     if (!this.contract) throw new Error("Chưa kết nối ví!");
-    const tx = await this.contract.addCandidate(name);
+    const trimmed = (name || "").trim();
+    if (!trimmed) {
+      throw new Error("Tên ứng cử viên không được để trống!");
+    }
+    console.log(`[Web3Service - Phase 5] Admin gửi giao dịch thêm ứng viên: "${trimmed}"...`);
+    const tx = await this.contract.addCandidate(trimmed);
+    console.log(`[Web3Service - Phase 5] Đã phát sóng Tx: ${tx.hash}. Đang đợi xác nhận...`);
     const receipt = await tx.wait();
-    return { txHash: tx.hash, receipt };
+    return { txHash: tx.hash, receipt, blockNumber: receipt.blockNumber };
   }
 
   /**
-   * Giao dịch Admin: Cấp quyền cử tri (Whitelist)
+   * Phương thức Admin: Cấp quyền cử tri (Whitelist địa chỉ ví)
+   * @param {string} voterAddress - Địa chỉ ví Ethereum (0x...)
    */
   async registerVoter(voterAddress) {
     if (!this.contract) throw new Error("Chưa kết nối ví!");
-    if (!ethers.isAddress(voterAddress)) {
-      throw new Error("Địa chỉ ví Ethereum không hợp lệ!");
+    const addr = (voterAddress || "").trim();
+    if (!ethers.isAddress(addr)) {
+      throw new Error("Địa chỉ ví Ethereum không hợp lệ (phải có dạng 0x... 42 ký tự)!");
     }
-    const tx = await this.contract.registerVoter(voterAddress);
+    console.log(`[Web3Service - Phase 5] Admin gửi giao dịch cấp quyền cho ví: ${addr}...`);
+    const tx = await this.contract.registerVoter(addr);
+    console.log(`[Web3Service - Phase 5] Đã phát sóng Tx: ${tx.hash}. Đang đợi xác nhận...`);
     const receipt = await tx.wait();
-    return { txHash: tx.hash, receipt };
+    return { txHash: tx.hash, receipt, blockNumber: receipt.blockNumber };
   }
 
   /**
-   * Giao dịch Admin: Mở hòm phiếu (chuyển sang Voting)
+   * Phương thức Admin: Mở hòm phiếu (chuyển sang Voting)
    */
   async startVoting() {
     if (!this.contract) throw new Error("Chưa kết nối ví!");
+    console.log("[Web3Service - Phase 5] Admin gửi giao dịch mở hòm phiếu (startVoting)...");
     const tx = await this.contract.startVoting();
+    console.log(`[Web3Service - Phase 5] Đã phát sóng Tx: ${tx.hash}. Đang đợi xác nhận...`);
     const receipt = await tx.wait();
-    return { txHash: tx.hash, receipt };
+    return { txHash: tx.hash, receipt, blockNumber: receipt.blockNumber };
   }
 
   /**
-   * Giao dịch Admin: Khóa hòm phiếu (chuyển sang Ended)
+   * Phương thức Admin: Đóng hòm phiếu vĩnh viễn (chuyển sang Ended)
    */
   async endVoting() {
     if (!this.contract) throw new Error("Chưa kết nối ví!");
+    console.log("[Web3Service - Phase 5] Admin gửi giao dịch đóng hòm phiếu (endVoting)...");
     const tx = await this.contract.endVoting();
+    console.log(`[Web3Service - Phase 5] Đã phát sóng Tx: ${tx.hash}. Đang đợi xác nhận...`);
     const receipt = await tx.wait();
-    return { txHash: tx.hash, receipt };
+    return { txHash: tx.hash, receipt, blockNumber: receipt.blockNumber };
   }
 
   /**
