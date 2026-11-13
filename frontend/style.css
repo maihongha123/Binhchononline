@@ -435,7 +435,9 @@ body {
   box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
 }
 
-/* Timeline */
+/* ==========================================================================
+   PHASE 4 (Thành viên 3): TIMELINE 3 BƯỚC TIẾN TRÌNH BẦU CỬ & GLOW CONNECTORS
+   ========================================================================== */
 .election-timeline {
   display: flex;
   align-items: center;
@@ -505,6 +507,7 @@ body {
 
 .step-connector.completed {
   background: var(--success);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
 }
 
 .stats-row {
