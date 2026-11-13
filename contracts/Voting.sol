@@ -27,10 +27,31 @@ contract Voting {
         Ended        // 2: Kết thúc và xem kết quả
     }
 
-    string public electionName; // Tên cuộc bình chọn
+    // Biến trạng thái lưu trữ trên Blockchain (State Storage)
+    address public admin;                  // Địa chỉ ví người quản trị
+    string public electionName;            // Tên cuộc bình chọn
+    WorkflowStatus public currentStatus;   // Trạng thái hiện tại của cuộc bầu cử
 
-    // Hàm khởi tạo tên cuộc bầu cử khi triển khai
+    Candidate[] public candidates;           // Danh sách ứng cử viên
+    mapping(address => Voter) public voters; // Tra cứu thông tin cử tri theo địa chỉ ví
+    uint256 public totalVotes;               // Tổng số phiếu bầu hợp lệ
+
+    // Bộ điều kiện kiểm tra chỉ cho phép người quản trị thực hiện
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Chi nguoi quan tri (Admin) moi co quyen thuc hien!");
+        _;
+    }
+
+    // Bộ điều kiện kiểm tra giai đoạn thực hiện hợp lệ
+    modifier checkStatus(WorkflowStatus _status) {
+        require(currentStatus == _status, "Chuc nang khong the thuc hien o giai doan nay!");
+        _;
+    }
+
+    // Hàm khởi tạo - Thiết lập Admin và tên cuộc bầu cử
     constructor(string memory _electionName) {
+        admin = msg.sender;
         electionName = _electionName;
+        currentStatus = WorkflowStatus.Registering;
     }
 }
