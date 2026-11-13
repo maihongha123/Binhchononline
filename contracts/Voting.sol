@@ -36,6 +36,12 @@ contract Voting {
     mapping(address => Voter) public voters; // Tra cứu thông tin cử tri theo địa chỉ ví
     uint256 public totalVotes;               // Tổng số phiếu bầu hợp lệ
 
+    // 4 sự kiện On-Chain phát tín hiệu cho Web3 Frontend đồng bộ thời gian thực
+    event CandidateAdded(uint256 indexed candidateId, string name);
+    event VoterRegistered(address indexed voterAddress);
+    event StatusChanged(WorkflowStatus previousStatus, WorkflowStatus newStatus);
+    event VoteCasted(address indexed voter, uint256 indexed candidateId);
+
     // Bộ điều kiện kiểm tra chỉ cho phép người quản trị thực hiện
     modifier onlyAdmin() {
         require(msg.sender == admin, "Chi nguoi quan tri (Admin) moi co quyen thuc hien!");
