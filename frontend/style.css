@@ -539,8 +539,17 @@ body {
 }
 
 /* ==========================================================================
-   VOTER PROFILE CARD
+   PHASE 3 (Thành viên 3): VOTER PROFILE CARD & IDENTITY BADGES
    ========================================================================== */
+.voter-profile-card {
+  position: relative;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.voter-profile-card:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
 .voter-profile-card .card-header {
   margin-bottom: 14px;
 }
