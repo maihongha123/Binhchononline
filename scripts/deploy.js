@@ -1,21 +1,29 @@
+// ==============================================================================
+// DỰ ÁN BÌNH CHỌN BLOCKCHAIN (DAPP)
+// PHÂN HỆ: KỊCH BẢN TRIỂN KHAI & TỰ ĐỘNG HÓA CẤU HÌNH (DEPLOYMENT & CONFIG GENERATION)
+// TÁC GIẢ CHỊU TRÁCH NHIỆM: THÀNH VIÊN 2 (Web3 Middleware & Deployment Engineer)
+// PHASE 1: Xây dựng script Hardhat deployment và trích xuất config tự động
+// ==============================================================================
+
 const hre = require("hardhat");
 const fs = require("fs");
 const path = require("path");
 
 async function main() {
   console.log("==================================================");
-  console.log(" BẮT ĐẦU TRIỂN KHAI SMART CONTRACT VOTING... ");
+  console.log(" [PHASE 1] BẮT ĐẦU TRIỂN KHAI SMART CONTRACT VOTING... ");
   console.log("==================================================");
 
-  // Lấy tài khoản người triển khai (Deployer / Admin)
+  // 1. Lấy tài khoản người triển khai hợp đồng (Deployer / Admin)
   const [deployer] = await hre.ethers.getSigners();
-  console.log("Địa chỉ ví của Quản trị viên (Admin):", deployer.address);
+  console.log("-> Địa chỉ ví Quản trị viên (Deployer / Admin):", deployer.address);
 
-  // Khởi tạo Contract Factory
+  // 2. Khởi tạo Contract Factory từ artifact đã biên dịch
   const electionTitle = "Bầu cử Ban Cán Sự Khóa 2026";
   const Voting = await hre.ethers.getContractFactory("Voting");
   
-  // Triển khai hợp đồng với tham số truyền vào hàm constructor
+  // 3. Triển khai hợp đồng với tham số khởi tạo truyền vào constructor
+  console.log("-> Đang phát sóng giao dịch triển khai lên mạng...");
   const voting = await Voting.deploy(electionTitle);
   await voting.waitForDeployment();
 
@@ -26,13 +34,13 @@ async function main() {
   console.log(" Tên cuộc bầu cử:", electionTitle);
   console.log("--------------------------------------------------");
 
-  // Xuất cấu hình tự động sang thư mục frontend để Thành viên 3 kết nối giao diện
+  // 4. Xuất cấu hình tự động sang thư mục frontend (contract-config.json)
   const configDir = path.join(__dirname, "../frontend");
   if (!fs.existsSync(configDir)) {
     fs.mkdirSync(configDir, { recursive: true });
   }
 
-  // Lấy ABI từ file artifact biên dịch của Hardhat
+  // 5. Trích xuất ABI từ file artifact biên dịch của Hardhat
   const artifactPath = path.join(__dirname, "../artifacts/contracts/Voting.sol/Voting.json");
   let abi = [];
   if (fs.existsSync(artifactPath)) {
@@ -40,7 +48,7 @@ async function main() {
     abi = artifact.abi;
   }
 
-  // Lấy chainId hiện tại
+  // 6. Lấy thông tin mạng và ChainID hiện tại
   const network = await hre.ethers.provider.getNetwork();
 
   const contractData = {
@@ -51,14 +59,14 @@ async function main() {
     abi: abi
   };
 
-  fs.writeFileSync(
-    path.join(configDir, "contract-config.json"),
-    JSON.stringify(contractData, null, 2)
-  );
-  console.log(" Đã tự động xuất Địa chỉ hợp đồng & ABI sang: frontend/contract-config.json");
+  const outputPath = path.join(configDir, "contract-config.json");
+  fs.writeFileSync(outputPath, JSON.stringify(contractData, null, 2));
+
+  console.log(" [TỰ ĐỘNG HÓA] Đã xuất cấu hình kết nối sang:", outputPath);
+  console.log("==================================================");
 }
 
 main().catch((error) => {
-  console.error("Lỗi trong quá trình triển khai:", error);
+  console.error("Lỗi trong quá trình triển khai hợp đồng:", error);
   process.exitCode = 1;
 });
