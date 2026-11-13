@@ -435,7 +435,9 @@ body {
   box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
 }
 
-/* Timeline */
+/* ==========================================================================
+   PHASE 4 (Thành viên 3): TIMELINE 3 BƯỚC TIẾN TRÌNH BẦU CỬ & GLOW CONNECTORS
+   ========================================================================== */
 .election-timeline {
   display: flex;
   align-items: center;
@@ -505,6 +507,7 @@ body {
 
 .step-connector.completed {
   background: var(--success);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
 }
 
 .stats-row {
@@ -539,8 +542,17 @@ body {
 }
 
 /* ==========================================================================
-   VOTER PROFILE CARD
+   PHASE 3 (Thành viên 3): VOTER PROFILE CARD & IDENTITY BADGES
    ========================================================================== */
+.voter-profile-card {
+  position: relative;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.voter-profile-card:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
 .voter-profile-card .card-header {
   margin-bottom: 14px;
 }

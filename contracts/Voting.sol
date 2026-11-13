@@ -7,62 +7,64 @@ pragma solidity ^0.8.20;
  * @dev Hợp đồng thông minh bình chọn Blockchain đơn giản, rõ ràng, dễ hiểu.
  */
 contract Voting {
-    // 1. CẤU TRÚC DỮ LIỆU
+    // Cấu trúc thông tin ứng viên
     struct Candidate {
         uint256 id;        // Mã định danh ứng viên (1, 2, 3...)
         string name;       // Họ và tên ứng viên
         uint256 voteCount; // Số phiếu bầu nhận được
     }
 
+    // Cấu trúc thông tin cử tri
     struct Voter {
         bool isRegistered;        // Đã được cấp quyền bỏ phiếu hay chưa
         bool hasVoted;           // Đã bỏ phiếu hay chưa (chống bầu 2 lần)
         uint256 votedCandidateId; // Mã ứng viên đã bầu
     }
 
-    // Ba trạng thái của cuộc bầu cử
+    // Máy trạng thái 3 giai đoạn của cuộc bầu cử
     enum WorkflowStatus {
         Registering, // 0: Đăng ký ứng viên và cử tri
         Voting,      // 1: Đang diễn ra bỏ phiếu
         Ended        // 2: Kết thúc và xem kết quả
     }
 
-    // 2. BIẾN TRẠNG THÁI
-    address public admin;                  // Địa chỉ ví người quản trị (deploy hợp đồng)
-    string public electionName;            // Tên cuộc bầu cử
+    // Biến trạng thái lưu trữ trên Blockchain (State Storage)
+    address public admin;                  // Địa chỉ ví người quản trị
+    string public electionName;            // Tên cuộc bình chọn
     WorkflowStatus public currentStatus;   // Trạng thái hiện tại của cuộc bầu cử
 
     Candidate[] public candidates;           // Danh sách ứng cử viên
     mapping(address => Voter) public voters; // Tra cứu thông tin cử tri theo địa chỉ ví
     uint256 public totalVotes;               // Tổng số phiếu bầu hợp lệ
 
-    // 3. SỰ KIỆN (Dùng để đồng bộ giao diện Web3 theo thời gian thực)
+    // 4 sự kiện On-Chain phát tín hiệu cho Web3 Frontend đồng bộ thời gian thực
     event CandidateAdded(uint256 indexed candidateId, string name);
     event VoterRegistered(address indexed voterAddress);
     event StatusChanged(WorkflowStatus previousStatus, WorkflowStatus newStatus);
     event VoteCasted(address indexed voter, uint256 indexed candidateId);
 
-    // 4. BỘ ĐIỀU KIỆN (MODIFIERS)
-    // Chỉ cho phép người quản trị thực hiện
+    // Bộ điều kiện kiểm tra chỉ cho phép người quản trị thực hiện
     modifier onlyAdmin() {
         require(msg.sender == admin, "Chi nguoi quan tri (Admin) moi co quyen thuc hien!");
         _;
     }
 
-    // Chỉ cho phép thực hiện ở đúng giai đoạn
+    // Bộ điều kiện kiểm tra giai đoạn thực hiện hợp lệ
     modifier checkStatus(WorkflowStatus _status) {
         require(currentStatus == _status, "Chuc nang khong the thuc hien o giai doan nay!");
         _;
     }
 
-    // 5. HÀM KHỞI TẠO (Chạy 1 lần duy nhất khi deploy)
+    // Hàm khởi tạo - Thiết lập Admin và tên cuộc bầu cử
     constructor(string memory _electionName) {
         admin = msg.sender;
         electionName = _electionName;
         currentStatus = WorkflowStatus.Registering;
     }
 
-    // 6. CÁC HÀM QUẢN TRỊ (DÀNH CHO ADMIN)
+    // ==============================================================================
+    // CÁC HÀM QUẢN TRỊ (DÀNH CHO ADMIN)
+    // ==============================================================================
 
     // Thêm một ứng cử viên mới
     function addCandidate(string memory _name) 
@@ -118,7 +120,9 @@ contract Voting {
         emit StatusChanged(WorkflowStatus.Voting, WorkflowStatus.Ended);
     }
 
-    // 7. CÁC HÀM CỬ TRI & TRA CỨU KẾT QUẢ
+    // ==============================================================================
+    // CÁC HÀM CỬ TRI & TRA CỨU KẾT QUẢ
+    // ==============================================================================
 
     // Cử tri thực hiện bỏ phiếu cho một ứng viên
     function vote(uint256 _candidateId) 
