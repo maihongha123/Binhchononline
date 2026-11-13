@@ -3,27 +3,28 @@ pragma solidity ^0.8.20;
 
 /**
  * @title Voting (Hệ thống Bình chọn Trực tuyến)
+ * Phụ trách: Minh Em - Smart Contract
  * @dev Hợp đồng thông minh bình chọn Blockchain đơn giản, rõ ràng, dễ hiểu.
  */
 contract Voting {
     // 1. CẤU TRÚC DỮ LIỆU
     struct Candidate {
         uint256 id;        // Mã định danh ứng viên (1, 2, 3...)
-        string name;       // Họ tên ứng viên
+        string name;       // Họ và tên ứng viên
         uint256 voteCount; // Số phiếu bầu nhận được
     }
 
     struct Voter {
-        bool isRegistered;        // Đã được cấp quyền bầu cử hay chưa
+        bool isRegistered;        // Đã được cấp quyền bỏ phiếu hay chưa
         bool hasVoted;           // Đã bỏ phiếu hay chưa (chống bầu 2 lần)
         uint256 votedCandidateId; // Mã ứng viên đã bầu
     }
 
     // Ba trạng thái của cuộc bầu cử
     enum WorkflowStatus {
-        Registering, // 0: Giai đoạn đăng ký
-        Voting,      // 1: Giai đoạn đang mở bình chọn
-        Ended        // 2: Giai đoạn đã kết thúc
+        Registering, // 0: Đăng ký ứng viên và cử tri
+        Voting,      // 1: Đang diễn ra bỏ phiếu
+        Ended        // 2: Kết thúc và xem kết quả
     }
 
     // 2. BIẾN TRẠNG THÁI
