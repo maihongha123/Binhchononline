@@ -2,7 +2,7 @@
 // DỰ ÁN BÌNH CHỌN BLOCKCHAIN (DAPP)
 // PHÂN HỆ: WEB3 MIDDLEWARE & GIAO TIẾP BLOCKCHAIN
 // TÁC GIẢ CHỊU TRÁCH NHIỆM: THÀNH VIÊN 2 (Web3 Middleware & Deployment Engineer)
-// PHASE 5: Triển khai các phương thức giao dịch on-chain executeVote và Admin calls
+// PHASE 6: Thiết lập 4 trình lắng nghe sự kiện On-Chain thời gian thực từ EVM
 // ==============================================================================
 
 class Web3Service {
@@ -400,34 +400,112 @@ class Web3Service {
   }
 
   /**
-   * Đăng ký 4 trình lắng nghe sự kiện On-Chain thời gian thực từ Smart Contract
+   * PHASE 6: Thiết lập 4 trình lắng nghe sự kiện On-Chain thời gian thực từ EVM
+   * Tự động làm mới dữ liệu và cập nhật giao diện mà không cần F5
+   * @param {Object} callbacks - Tập hợp các hàm xử lý callback
+   * @param {Function} callbacks.onVoteCasted - Callback khi cử tri bỏ phiếu
+   * @param {Function} callbacks.onCandidateAdded - Callback khi có ứng cử viên mới
+   * @param {Function} callbacks.onVoterRegistered - Callback khi cử tri được cấp quyền
+   * @param {Function} callbacks.onStatusChanged - Callback khi thay đổi giai đoạn bầu cử
    */
   setupEventListeners(callbacks = {}) {
-    if (!this.contract) return;
+    if (!this.contract) {
+      console.warn("[Web3Service - Phase 6] Không thể gắn event listeners: Hợp đồng chưa được khởi tạo!");
+      return;
+    }
+
     try {
+      // 1. Dọn dẹp các listeners cũ để tránh trùng lặp memory leak
       this.contract.removeAllListeners();
+      this.activeCallbacks = callbacks;
 
-      this.contract.on("VoteCasted", (voter, candidateId) => {
-        console.log(`[On-Chain Event] VoteCasted: Cử tri ${voter} đã bầu #${candidateId}`);
-        if (callbacks.onVoteCasted) callbacks.onVoteCasted(voter, Number(candidateId));
+      console.log("[Web3Service - Phase 6] Bắt đầu kích hoạt 4 trình lắng nghe sự kiện EVM...");
+
+      // 2. Sự kiện 1: VoteCasted (Cử tri bỏ phiếu)
+      this.contract.on("VoteCasted", (voter, candidateId, event) => {
+        const cId = Number(candidateId);
+        console.log(`[EVM Event - VoteCasted] Cử tri ${voter} đã bỏ phiếu cho ứng viên #${cId}`);
+        if (callbacks.onVoteCasted) {
+          callbacks.onVoteCasted(voter, cId, event);
+        }
+        this._dispatchWeb3Event("VoteCasted", { voter, candidateId: cId, event });
       });
 
-      this.contract.on("CandidateAdded", (candidateId, name) => {
-        console.log(`[On-Chain Event] CandidateAdded: "${name}" (#${candidateId})`);
-        if (callbacks.onCandidateAdded) callbacks.onCandidateAdded(Number(candidateId), name);
+      // 3. Sự kiện 2: CandidateAdded (Thêm ứng cử viên)
+      this.contract.on("CandidateAdded", (candidateId, name, event) => {
+        const cId = Number(candidateId);
+        console.log(`[EVM Event - CandidateAdded] Ghi danh ứng cử viên: "${name}" (Mã #${cId})`);
+        if (callbacks.onCandidateAdded) {
+          callbacks.onCandidateAdded(cId, name, event);
+        }
+        this._dispatchWeb3Event("CandidateAdded", { candidateId: cId, name, event });
       });
 
-      this.contract.on("VoterRegistered", (voterAddress) => {
-        console.log(`[On-Chain Event] VoterRegistered: ${voterAddress}`);
-        if (callbacks.onVoterRegistered) callbacks.onVoterRegistered(voterAddress);
+      // 4. Sự kiện 3: VoterRegistered (Cấp quyền cử tri)
+      this.contract.on("VoterRegistered", (voterAddress, event) => {
+        console.log(`[EVM Event - VoterRegistered] Cấp quyền bỏ phiếu thành công cho ví: ${voterAddress}`);
+        if (callbacks.onVoterRegistered) {
+          callbacks.onVoterRegistered(voterAddress, event);
+        }
+        this._dispatchWeb3Event("VoterRegistered", { voterAddress, event });
       });
 
-      this.contract.on("StatusChanged", (prevStatus, newStatus) => {
-        console.log(`[On-Chain Event] StatusChanged: ${prevStatus} -> ${newStatus}`);
-        if (callbacks.onStatusChanged) callbacks.onStatusChanged(Number(prevStatus), Number(newStatus));
+      // 5. Sự kiện 4: StatusChanged (Thay đổi giai đoạn bầu cử)
+      this.contract.on("StatusChanged", (prevStatus, newStatus, event) => {
+        const prev = Number(prevStatus);
+        const next = Number(newStatus);
+        console.log(`[EVM Event - StatusChanged] Giai đoạn thay đổi: ${prev} -> ${next}`);
+        if (callbacks.onStatusChanged) {
+          callbacks.onStatusChanged(prev, next, event);
+        }
+        this._dispatchWeb3Event("StatusChanged", { prevStatus: prev, newStatus: next, event });
       });
+
+      console.log("[Web3Service - Phase 6] 4 trình lắng nghe sự kiện EVM đã sẵn sàng hoạt động!");
     } catch (e) {
-      console.warn("[Web3Service] Chưa thể gắn event listeners:", e.message);
+      console.warn("[Web3Service - Phase 6] Lỗi khi thiết lập event listeners:", e.message);
+    }
+  }
+
+  /**
+   * Hủy đăng ký toàn bộ sự kiện On-Chain (Dọn dẹp tài nguyên khi ngắt kết nối ví)
+   */
+  removeEventListeners() {
+    if (this.contract) {
+      try {
+        this.contract.removeAllListeners();
+        this.activeCallbacks = null;
+        console.log("[Web3Service - Phase 6] Đã hủy đăng ký toàn bộ sự kiện On-Chain.");
+      } catch (err) {
+        console.warn("[Web3Service - Phase 6] Lỗi khi gỡ event listeners:", err);
+      }
+    }
+  }
+
+  /**
+   * Phát sự kiện CustomEvent trên window cho các module UI khác bắt được mà không cần phụ thuộc chặt chẽ
+   * @private
+   */
+  _dispatchWeb3Event(eventName, detail) {
+    try {
+      window.dispatchEvent(new CustomEvent(`web3:${eventName}`, { detail }));
+    } catch (_) {}
+  }
+
+  /**
+   * Truy vấn lịch sử sự kiện On-Chain từ một block nhất định
+   * @param {string} eventName - Tên sự kiện ("VoteCasted", "CandidateAdded", ...)
+   * @param {number|string} fromBlock - Khối bắt đầu (mặc định 0)
+   */
+  async getPastEvents(eventName, fromBlock = 0) {
+    if (!this.contract) return [];
+    try {
+      const filter = this.contract.filters[eventName]();
+      const events = await this.contract.queryFilter(filter, fromBlock, "latest");
+      return events;
+    } catch (err) {
+      console.warn(`[Web3Service - Phase 6] Không thể truy vấn lịch sử sự kiện ${eventName}:`, err.message);
+      return [];
     }
   }
 
