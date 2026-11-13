@@ -1,12 +1,20 @@
+// ==============================================================================
+// DỰ ÁN BÌNH CHỌN BLOCKCHAIN (DAPP)
+// PHÂN HỆ: KỊCH BẢN NẠP DỮ LIỆU MẪU & KHỞI TẠO BẦU CỬ DEMO (SEED DATA SCRIPT)
+// TÁC GIẢ CHỊU TRÁCH NHIỆM: THÀNH VIÊN 2 (Web3 Middleware & Deployment Engineer)
+// PHASE 2: Viết script seed.js khởi tạo dữ liệu mẫu 3 ứng viên và 4 cử tri
+// ==============================================================================
+
 const hre = require("hardhat");
 const fs = require("fs");
 const path = require("path");
 
 async function main() {
   console.log("==================================================");
-  console.log(" KHỞI TẠO DỮ LIỆU MẪU TỰ ĐỘNG (SEED DATA SCRIPT) ");
+  console.log(" [PHASE 2] KHỞI TẠO DỮ LIỆU MẪU TỰ ĐỘNG (SEED DATA SCRIPT) ");
   console.log("==================================================");
 
+  // 1. Lấy danh sách tài khoản từ node mạng
   const signers = await hre.ethers.getSigners();
   const admin = signers[0];
   const voters = signers.slice(1, 5); // 4 cử tri thử nghiệm
@@ -15,7 +23,7 @@ async function main() {
   console.log("2. Danh sách 4 cử tri mẫu:");
   voters.forEach((v, idx) => console.log(`   - Cử tri #${idx + 1}: ${v.address}`));
 
-  // Triển khai hợp đồng mới
+  // 2. Triển khai hợp đồng mới với tiêu đề cuộc bầu cử
   const electionTitle = "Bầu Cử Đại Diện Sinh Viên Xuất Sắc 2026";
   const Voting = await hre.ethers.getContractFactory("Voting");
   const voting = await Voting.deploy(electionTitle);
@@ -24,26 +32,26 @@ async function main() {
 
   console.log("\n-> Hợp đồng đã triển khai tại:", contractAddress);
 
-  // Thêm 3 ứng cử viên
+  // 3. Thêm 3 ứng cử viên mẫu đại diện cho sinh viên
   console.log("\n-> Đang thêm 3 ứng cử viên mẫu...");
   await (await voting.connect(admin).addCandidate("Nguyễn Văn A (Ủy Viên Ban Chấp Hành)")).wait();
   await (await voting.connect(admin).addCandidate("Trần Thị B (Trưởng Ban Truyền Thông)")).wait();
   await (await voting.connect(admin).addCandidate("Lê Văn C (Đội Trưởng Nghiên Cứu)")).wait();
   console.log("   ✓ Đã thêm 3 ứng cử viên thành công!");
 
-  // Cấp quyền cho 4 cử tri
+  // 4. Cấp quyền bỏ phiếu (Whitelist) cho 4 cử tri
   console.log("\n-> Đang cấp quyền bỏ phiếu (Whitelist) cho 4 ví cử tri...");
   for (const voter of voters) {
     await (await voting.connect(admin).registerVoter(voter.address)).wait();
   }
   console.log("   ✓ Đã cấp quyền bỏ phiếu cho 4 cử tri thành công!");
 
-  // Mở hòm phiếu
+  // 5. Admin kích hoạt mở hòm phiếu (chuyển sang trạng thái Voting)
   console.log("\n-> Admin kích hoạt mở hòm phiếu (startVoting)...");
   await (await voting.connect(admin).startVoting()).wait();
   console.log("   ✓ Trạng thái hiện tại: 1 - Đang Bỏ Phiếu (Voting)");
 
-  // Mô phỏng 3 cử tri bỏ phiếu
+  // 6. Mô phỏng 3 cử tri đầu tiên thực hiện bỏ phiếu
   console.log("\n-> Mô phỏng các cử tri thực hiện bỏ phiếu:");
   await (await voting.connect(voters[0]).vote(1)).wait(); // Cử tri 1 bầu Ứng viên 1
   console.log("   • Cử tri #1 đã bầu cho Ứng viên #1");
@@ -54,7 +62,7 @@ async function main() {
   await (await voting.connect(voters[2]).vote(2)).wait(); // Cử tri 3 bầu Ứng viên 2
   console.log("   • Cử tri #3 đã bầu cho Ứng viên #2");
 
-  // Xuất file cấu hình sang frontend
+  // 7. Xuất cấu hình tự động sang frontend để đồng bộ ngay
   const configDir = path.join(__dirname, "../frontend");
   const artifactPath = path.join(__dirname, "../artifacts/contracts/Voting.sol/Voting.json");
   let abi = [];
