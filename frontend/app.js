@@ -175,12 +175,12 @@ async function connectWallet() {
   if (window.location.protocol === "file:") {
     showToast(
       "Yêu cầu mở qua Localhost",
-      "MetaMask không hỗ trợ file:///. Đang chuyển hướng sang http://localhost:3000...",
+      "MetaMask không hỗ trợ file:///. Đang chuyển hướng sang http://localhost:2000...",
       "warning",
       5000
     );
     setTimeout(() => {
-      window.location.href = "http://localhost:3000";
+      window.location.href = "http://localhost:2000";
     }, 1200);
     return;
   }

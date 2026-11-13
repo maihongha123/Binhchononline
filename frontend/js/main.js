@@ -99,8 +99,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     } catch (err) {
       if (err.message === "PROTOCOL_FILE_NOT_ALLOWED") {
-        ui.showToast("Yêu cầu Localhost", "MetaMask không hỗ trợ file:///. Vui lòng mở qua http://localhost:3000!", "warning", 5000);
-        setTimeout(() => { window.location.href = "http://localhost:3000"; }, 1500);
+        ui.showToast("Yêu cầu Localhost", "MetaMask không hỗ trợ file:///. Vui lòng mở qua http://localhost:2000!", "warning", 5000);
+        setTimeout(() => { window.location.href = "http://localhost:2000"; }, 1500);
         return;
       }
       if (err.message === "METAMASK_NOT_INSTALLED") {
