@@ -2,6 +2,7 @@
 // DỰ ÁN BÌNH CHỌN BLOCKCHAIN (DAPP)
 // PHÂN HỆ: WEB3 MIDDLEWARE & GIAO TIẾP BLOCKCHAIN
 // TÁC GIẢ CHỊU TRÁCH NHIỆM: THÀNH VIÊN 2 (Web3 Middleware & Deployment Engineer)
+// PHASE 3: Tách module web3-service.js kết nối Ethers.js v6 và MetaMask
 // ==============================================================================
 
 class Web3Service {
