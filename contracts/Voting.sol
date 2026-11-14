@@ -60,4 +60,57 @@ contract Voting {
         electionName = _electionName;
         currentStatus = WorkflowStatus.Registering;
     }
+
+    // Thêm một ứng cử viên mới vào danh sách
+    function addCandidate(string memory _name) 
+        external 
+        onlyAdmin 
+        checkStatus(WorkflowStatus.Registering) 
+    {
+        require(bytes(_name).length > 0, "Ten ung vien khong duoc de trong!");
+
+        uint256 id = candidates.length + 1;
+        candidates.push(Candidate({
+            id: id,
+            name: _name,
+            voteCount: 0
+        }));
+
+        emit CandidateAdded(id, _name);
+    }
+
+    // Cấp quyền bỏ phiếu cho một địa chỉ ví cử tri
+    function registerVoter(address _voter) 
+        external 
+        onlyAdmin 
+        checkStatus(WorkflowStatus.Registering) 
+    {
+        require(_voter != address(0), "Dia chi vi khong hop le!");
+        require(!voters[_voter].isRegistered, "Cu tri nay da duoc dang ky truoc do!");
+
+        voters[_voter].isRegistered = true;
+
+        emit VoterRegistered(_voter);
+    }
+
+    // Mở hòm phiếu để bắt đầu bình chọn
+    function startVoting() 
+        external 
+        onlyAdmin 
+        checkStatus(WorkflowStatus.Registering) 
+    {
+        require(candidates.length >= 2, "Can it nhat 2 ung vien de bat dau cuoc bau cu!");
+        currentStatus = WorkflowStatus.Voting;
+        emit StatusChanged(WorkflowStatus.Registering, WorkflowStatus.Voting);
+    }
+
+    // Đóng hòm phiếu và kết thúc cuộc bầu cử
+    function endVoting() 
+        external 
+        onlyAdmin 
+        checkStatus(WorkflowStatus.Voting) 
+    {
+        currentStatus = WorkflowStatus.Ended;
+        emit StatusChanged(WorkflowStatus.Voting, WorkflowStatus.Ended);
+    }
 }
