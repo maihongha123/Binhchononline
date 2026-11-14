@@ -135,4 +135,34 @@ contract Voting {
         // 3. Interactions: Phát sự kiện ra Blockchain
         emit VoteCasted(msg.sender, _candidateId);
     }
+
+    // Lấy toàn bộ danh sách ứng cử viên để hiển thị lên giao diện (miễn phí Gas)
+    function getCandidates() external view returns (Candidate[] memory) {
+        return candidates;
+    }
+
+    // Lấy tổng số lượng ứng cử viên
+    function getCandidatesCount() external view returns (uint256) {
+        return candidates.length;
+    }
+
+    // Xác định ứng cử viên có số phiếu cao nhất khi cuộc bầu cử kết thúc
+    function getWinner() 
+        external 
+        view 
+        checkStatus(WorkflowStatus.Ended) 
+        returns (string memory winnerName, uint256 highestVote) 
+    {
+        uint256 winningIndex = 0;
+
+        // Duyệt tìm ứng viên có số phiếu cao nhất (thuật toán tìm Max cơ bản)
+        for (uint256 i = 1; i < candidates.length; i++) {
+            if (candidates[i].voteCount > candidates[winningIndex].voteCount) {
+                winningIndex = i;
+            }
+        }
+
+        winnerName = candidates[winningIndex].name;
+        highestVote = candidates[winningIndex].voteCount;
+    }
 }
