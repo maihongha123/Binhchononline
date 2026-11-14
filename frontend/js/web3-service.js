@@ -2,7 +2,7 @@
 // DỰ ÁN BÌNH CHỌN BLOCKCHAIN (DAPP)
 // PHÂN HỆ: WEB3 MIDDLEWARE & GIAO TIẾP BLOCKCHAIN
 // TÁC GIẢ CHỊU TRÁCH NHIỆM: THÀNH VIÊN 2 (Web3 Middleware & Deployment Engineer)
-// PHASE 6: Thiết lập 4 trình lắng nghe sự kiện On-Chain thời gian thực từ EVM
+// PHASE 7: Chuẩn hóa hệ thống bắt lỗi ngoại lệ ACTION_REJECTED và Revert reasons
 // ==============================================================================
 
 class Web3Service {
@@ -325,11 +325,30 @@ class Web3Service {
   // ==============================================================================
 
   /**
+   * Kiểm tra xem địa chỉ hợp đồng đã thực sự có mã bytecode trên mạng đang kết nối chưa
+   */
+  async ensureContractReady() {
+    if (!this.contract) throw new Error("Chưa kết nối ví!");
+    if (!this.provider || !this.contractAddress) return;
+    try {
+      const code = await this.provider.getCode(this.contractAddress);
+      if (!code || code === "0x") {
+        throw new Error("CONTRACT_NOT_DEPLOYED_ON_NETWORK");
+      }
+    } catch (err) {
+      if (err.message === "CONTRACT_NOT_DEPLOYED_ON_NETWORK") {
+        throw err;
+      }
+      console.warn("[Web3Service] Cảnh báo kiểm tra bytecode contract:", err.message);
+    }
+  }
+
+  /**
    * Phương thức: Bỏ phiếu cho một ứng cử viên (Cử tri thực hiện)
    * @param {number} candidateId - Mã định danh của ứng viên (1, 2, 3...)
    */
   async vote(candidateId) {
-    if (!this.contract) throw new Error("Chưa kết nối ví!");
+    await this.ensureContractReady();
     if (!candidateId || candidateId <= 0) {
       throw new Error("Mã ứng viên không hợp lệ!");
     }
@@ -346,7 +365,7 @@ class Web3Service {
    * @param {string} name - Họ và tên ứng cử viên
    */
   async addCandidate(name) {
-    if (!this.contract) throw new Error("Chưa kết nối ví!");
+    await this.ensureContractReady();
     const trimmed = (name || "").trim();
     if (!trimmed) {
       throw new Error("Tên ứng cử viên không được để trống!");
@@ -363,7 +382,7 @@ class Web3Service {
    * @param {string} voterAddress - Địa chỉ ví Ethereum (0x...)
    */
   async registerVoter(voterAddress) {
-    if (!this.contract) throw new Error("Chưa kết nối ví!");
+    await this.ensureContractReady();
     const addr = (voterAddress || "").trim();
     if (!ethers.isAddress(addr)) {
       throw new Error("Địa chỉ ví Ethereum không hợp lệ (phải có dạng 0x... 42 ký tự)!");
@@ -379,7 +398,7 @@ class Web3Service {
    * Phương thức Admin: Mở hòm phiếu (chuyển sang Voting)
    */
   async startVoting() {
-    if (!this.contract) throw new Error("Chưa kết nối ví!");
+    await this.ensureContractReady();
     console.log("[Web3Service - Phase 5] Admin gửi giao dịch mở hòm phiếu (startVoting)...");
     const tx = await this.contract.startVoting();
     console.log(`[Web3Service - Phase 5] Đã phát sóng Tx: ${tx.hash}. Đang đợi xác nhận...`);
@@ -391,7 +410,7 @@ class Web3Service {
    * Phương thức Admin: Đóng hòm phiếu vĩnh viễn (chuyển sang Ended)
    */
   async endVoting() {
-    if (!this.contract) throw new Error("Chưa kết nối ví!");
+    await this.ensureContractReady();
     console.log("[Web3Service - Phase 5] Admin gửi giao dịch đóng hòm phiếu (endVoting)...");
     const tx = await this.contract.endVoting();
     console.log(`[Web3Service - Phase 5] Đã phát sóng Tx: ${tx.hash}. Đang đợi xác nhận...`);
@@ -510,20 +529,125 @@ class Web3Service {
   }
 
   /**
-   * Chuẩn hóa thông báo lỗi thân thiện cho người dùng
+   * PHASE 7: Chuẩn hóa hệ thống bắt lỗi ngoại lệ ACTION_REJECTED và Revert reasons
+   * Phân loại lỗi MetaMask (từ chối ký), lỗi thiếu gas, lỗi RPC và các require revert từ Smart Contract
+   * @param {Error|Object|string} error - Đối tượng lỗi từ Ethers.js v6 hoặc MetaMask RPC
+   * @returns {string} Thông báo lỗi tiếng Việt thân thiện, rõ nghĩa cho người dùng
    */
   parseError(error) {
-    if (!error) return "Đã xảy ra lỗi không xác định.";
-    if (error.code === "ACTION_REJECTED" || error.message?.includes("user rejected") || error.message?.includes("ACTION_REJECTED")) {
-      return "Người dùng đã hủy hoặc từ chối ký giao dịch trên MetaMask.";
+    if (!error) return "Đã xảy ra lỗi không xác định trên hệ thống.";
+    if (typeof error === "string") return error;
+
+    console.error("[Web3Service - Phase 7] Chi tiết ngoại lệ:", error);
+
+    // 1. Nhóm lỗi người dùng từ chối thao tác (EIP-1193 code 4001 hoặc ACTION_REJECTED)
+    const errCode = error.code;
+    const rawMsg = (error.message || "").toLowerCase();
+    const shortMsg = error.shortMessage || "";
+
+    if (
+      errCode === "ACTION_REJECTED" ||
+      errCode === 4001 ||
+      rawMsg.includes("user rejected") ||
+      rawMsg.includes("user denied") ||
+      rawMsg.includes("action_rejected") ||
+      rawMsg.includes("cancelled")
+    ) {
+      return "Giao dịch đã bị hủy: Bạn đã từ chối ký xác nhận giao dịch trên ví MetaMask.";
     }
-    if (error.reason) return error.reason;
-    if (error.data?.message) return error.data.message;
-    if (error.message?.includes("Chi nguoi quan tri")) return "Chỉ người quản trị (Admin) mới có quyền thực hiện thao tác này!";
-    if (error.message?.includes("Chuc nang khong the thuc hien")) return "Chức năng không được phép ở giai đoạn bầu cử này!";
-    if (error.message?.includes("Ban khong co ten trong danh sach")) return "Địa chỉ ví của bạn chưa được cấp quyền bỏ phiếu!";
-    if (error.message?.includes("Ban da bo phieu roi")) return "Bạn đã bỏ phiếu rồi, không thể bỏ phiếu lần thứ hai!";
-    return error.shortMessage || error.message || "Giao dịch thất bại trên Blockchain.";
+
+    // 2. Nhóm lỗi không đủ số dư trả phí Gas (Insufficient Funds)
+    if (
+      errCode === "INSUFFICIENT_FUNDS" ||
+      rawMsg.includes("insufficient funds") ||
+      rawMsg.includes("exceeds balance") ||
+      rawMsg.includes("gas * price + value")
+    ) {
+      return "Số dư SepoliaETH trong ví của bạn không đủ để chi trả phí gas giao dịch!";
+    }
+
+    // 3. Trích xuất lý do Revert từ Smart Contract (hỗ trợ nhiều cấp độ bọc lỗi của Ethers v6)
+    let reason =
+      error.reason ||
+      error.revert?.args?.[0] ||
+      error.info?.error?.message ||
+      error.data?.message ||
+      error.error?.data?.message ||
+      "";
+
+    // Tìm trong chuỗi reason hoặc chuỗi thông điệp tổng quát
+    const fullText = `${reason} ${shortMsg} ${error.message || ""}`;
+
+    // 4. Ánh xạ chi tiết 10 điều kiện require revert từ Voting.sol sang tiếng Việt chuẩn mực:
+    if (fullText.includes("Chi nguoi quan tri") || fullText.includes("onlyAdmin")) {
+      return "Quyền truy cập bị từ chối: Chỉ người quản trị (Admin) mới có quyền thực hiện thao tác này!";
+    }
+    if (fullText.includes("Ten ung vien khong duoc de trong")) {
+      return "Dữ liệu không hợp lệ: Họ và tên ứng cử viên không được để trống!";
+    }
+    if (fullText.includes("Dia chi vi khong hop le")) {
+      return "Địa chỉ không hợp lệ: Địa chỉ ví cử tri không được là địa chỉ rỗng (0x0)!";
+    }
+    if (fullText.includes("Cu tri nay da duoc dang ky truoc do")) {
+      return "Cử tri này đã được cấp quyền trước đó rồi (không thể đăng ký trùng lặp)!";
+    }
+    if (fullText.includes("Can it nhat 2 ung vien")) {
+      return "Chưa đủ điều kiện: Cần ít nhất 2 ứng cử viên để bắt đầu cuộc bình chọn!";
+    }
+    if (fullText.includes("Ban khong co ten trong danh sach")) {
+      return "Bạn chưa được cấp quyền: Địa chỉ ví hiện tại chưa có trong danh sách cử tri được phép bỏ phiếu!";
+    }
+    if (fullText.includes("Ban da bo phieu roi")) {
+      return "Chống gian lận: Bạn đã bỏ phiếu rồi, hệ thống Blockchain chặn bỏ phiếu lần thứ hai!";
+    }
+    if (fullText.includes("Ma so ung vien khong hop le")) {
+      return "Mã số ứng cử viên không hợp lệ hoặc không tồn tại trong danh sách!";
+    }
+    if (fullText.includes("Chuc nang khong the thuc hien") || fullText.includes("checkStatus")) {
+      return "Giai đoạn hiện tại của cuộc bầu cử không cho phép thực hiện hành động này!";
+    }
+    if (fullText.includes("Cuoc bau cu chua ket thuc")) {
+      return "Cuộc bầu cử chưa kết thúc nên chưa thể xác định người đắc cử!";
+    }
+
+    // 5. Nhóm lỗi kết nối mạng, RPC Blockchain & Rate limit
+    if (
+      errCode === -32002 ||
+      rawMsg.includes("-32002") ||
+      rawMsg.includes("returned too many errors") ||
+      rawMsg.includes("could not coalesce error") ||
+      rawMsg.includes("endpoint returned")
+    ) {
+      return "Node RPC Sepolia của MetaMask đang bị nghẽn mạng (quá tải), hoặc địa chỉ hợp đồng chưa được Deploy lên Sepolia. Vui lòng deploy hợp đồng lên Sepolia hoặc thử lại sau giây lát!";
+    }
+
+    if (rawMsg.includes("contract_not_deployed_on_network")) {
+      return "Hợp đồng chưa được Deploy lên mạng Sepolia! Vui lòng hoàn tất bước Deploy trên Remix và cập nhật địa chỉ hợp đồng trước khi thực hiện giao dịch.";
+    }
+
+    if (
+      errCode === "NETWORK_ERROR" ||
+      rawMsg.includes("could not detect network") ||
+      rawMsg.includes("failed to fetch") ||
+      rawMsg.includes("connection reset")
+    ) {
+      return "Lỗi kết nối mạng: Không thể kết nối với node Blockchain. Vui lòng kiểm tra lại mạng Internet hoặc RPC!";
+    }
+
+    if (errCode === "UNPREDICTABLE_GAS_LIMIT" || rawMsg.includes("cannot estimate gas")) {
+      return "Lỗi ước tính Gas: Giao dịch có thể sẽ bị Revert do vi phạm quy tắc Smart Contract.";
+    }
+
+    if (errCode === "NONCE_EXPIRED" || rawMsg.includes("replacement transaction underpriced")) {
+      return "Lỗi Nonce: Đang có giao dịch khác chờ xử lý trên ví. Vui lòng tăng Gas hoặc thử lại sau.";
+    }
+
+    // 6. Trả về reason nguyên bản nếu có, hoặc rút ngắn thông điệp kỹ thuật
+    if (reason && typeof reason === "string" && !reason.includes("execution reverted")) {
+      return reason;
+    }
+
+    return shortMsg || error.message || "Giao dịch thất bại trên Blockchain.";
   }
 }
 
