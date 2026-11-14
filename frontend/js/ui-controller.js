@@ -73,7 +73,7 @@ class UIController {
   }
 
   // ============================================================================
-  // HỆ THỐNG TOAST NOTIFICATION 5 TRẠNG THÁI (SUCCESS, ERROR, WARNING, INFO, LOADING)
+  // PHASE 7 (Thành viên 3): HỆ THỐNG TOAST NOTIFICATION 5 TRẠNG THÁI THAY THẾ ALERT
   // ============================================================================
   showToast(title, message, type = "info", duration = 4000) {
     if (!this.dom.toastContainer) return null;
