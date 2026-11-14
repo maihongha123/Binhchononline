@@ -365,20 +365,47 @@ class Web3Service {
   }
 
   /**
+   * Phương thức điều phối giao dịch trực tiếp qua MetaMask (Bỏ qua các tầng trung gian gây lỗi RPC)
+   */
+  async executeContractTransaction(methodName, args = []) {
+    this.checkPrerequisites();
+    if (!this.currentAccount) {
+      await this.connect();
+    }
+    const iface = new ethers.Interface(this.abi || this.FALLBACK_ABI);
+    const data = iface.encodeFunctionData(methodName, args);
+
+    console.log(`[Web3Service] Gửi giao dịch trực tiếp tới MetaMask: ${methodName}(${args.join(', ')})`);
+
+    // Gửi lệnh eth_sendTransaction trực tiếp vào MetaMask mà không qua bất kỳ khâu trung gian nào
+    const txHash = await window.ethereum.request({
+      method: "eth_sendTransaction",
+      params: [{
+        from: this.currentAccount,
+        to: this.contractAddress,
+        data: data,
+        gas: "0x7a120" // 500,000 gas limit
+      }]
+    });
+
+    console.log(`[Web3Service] MetaMask đã ký và phát sóng Tx: ${txHash}. Đang đợi xác nhận...`);
+    
+    // Đợi xác nhận bằng Publicnode Provider tốc độ cao
+    const readProv = this.getReadProvider();
+    const receipt = await readProv.waitForTransaction(txHash, 1);
+    
+    return { txHash, receipt, blockNumber: receipt ? receipt.blockNumber : null };
+  }
+
+  /**
    * Phương thức: Bỏ phiếu cho một ứng cử viên (Cử tri thực hiện)
    * @param {number} candidateId - Mã định danh của ứng viên (1, 2, 3...)
    */
   async vote(candidateId) {
-    await this.ensureContractReady();
     if (!candidateId || candidateId <= 0) {
       throw new Error("Mã ứng viên không hợp lệ!");
     }
-    console.log(`[Web3Service - Phase 5] Bắt đầu gửi giao dịch bỏ phiếu cho Ứng viên #${candidateId}...`);
-    const tx = await this.contract.vote(candidateId, { gasLimit: 500000 });
-    console.log(`[Web3Service - Phase 5] Giao dịch đã phát sóng (TxHash: ${tx.hash}). Đang đợi đóng khối...`);
-    const receipt = await tx.wait();
-    console.log(`[Web3Service - Phase 5] Giao dịch thành công tại Block #${receipt.blockNumber}!`);
-    return { txHash: tx.hash, receipt, blockNumber: receipt.blockNumber };
+    return await this.executeContractTransaction("vote", [BigInt(candidateId)]);
   }
 
   /**
@@ -386,16 +413,11 @@ class Web3Service {
    * @param {string} name - Họ và tên ứng cử viên
    */
   async addCandidate(name) {
-    await this.ensureContractReady();
     const trimmed = (name || "").trim();
     if (!trimmed) {
       throw new Error("Tên ứng cử viên không được để trống!");
     }
-    console.log(`[Web3Service - Phase 5] Admin gửi giao dịch thêm ứng viên: "${trimmed}"...`);
-    const tx = await this.contract.addCandidate(trimmed, { gasLimit: 500000 });
-    console.log(`[Web3Service - Phase 5] Đã phát sóng Tx: ${tx.hash}. Đang đợi xác nhận...`);
-    const receipt = await tx.wait();
-    return { txHash: tx.hash, receipt, blockNumber: receipt.blockNumber };
+    return await this.executeContractTransaction("addCandidate", [trimmed]);
   }
 
   /**
@@ -403,23 +425,17 @@ class Web3Service {
    * @param {string} voterAddress - Địa chỉ ví Ethereum (0x...)
    */
   async registerVoter(voterAddress) {
-    await this.ensureContractReady();
     const addr = (voterAddress || "").trim();
     if (!ethers.isAddress(addr)) {
       throw new Error("Địa chỉ ví Ethereum không hợp lệ (phải có dạng 0x... 42 ký tự)!");
     }
-    console.log(`[Web3Service - Phase 5] Admin gửi giao dịch cấp quyền cho ví: ${addr}...`);
-    const tx = await this.contract.registerVoter(addr, { gasLimit: 500000 });
-    console.log(`[Web3Service - Phase 5] Đã phát sóng Tx: ${tx.hash}. Đang đợi xác nhận...`);
-    const receipt = await tx.wait();
-    return { txHash: tx.hash, receipt, blockNumber: receipt.blockNumber };
+    return await this.executeContractTransaction("registerVoter", [addr]);
   }
 
   /**
    * Phương thức Admin: Mở hòm phiếu (chuyển sang Voting)
    */
   async startVoting() {
-    await this.ensureContractReady();
     try {
       const readContract = this.getReadContract();
       const count = await readContract.getCandidatesCount();
@@ -431,23 +447,14 @@ class Web3Service {
         throw checkErr;
       }
     }
-    console.log("[Web3Service - Phase 5] Admin gửi giao dịch mở hòm phiếu (startVoting)...");
-    const tx = await this.contract.startVoting({ gasLimit: 500000 });
-    console.log(`[Web3Service - Phase 5] Đã phát sóng Tx: ${tx.hash}. Đang đợi xác nhận...`);
-    const receipt = await tx.wait();
-    return { txHash: tx.hash, receipt, blockNumber: receipt.blockNumber };
+    return await this.executeContractTransaction("startVoting", []);
   }
 
   /**
    * Phương thức Admin: Đóng hòm phiếu vĩnh viễn (chuyển sang Ended)
    */
   async endVoting() {
-    await this.ensureContractReady();
-    console.log("[Web3Service - Phase 5] Admin gửi giao dịch đóng hòm phiếu (endVoting)...");
-    const tx = await this.contract.endVoting({ gasLimit: 500000 });
-    console.log(`[Web3Service - Phase 5] Đã phát sóng Tx: ${tx.hash}. Đang đợi xác nhận...`);
-    const receipt = await tx.wait();
-    return { txHash: tx.hash, receipt, blockNumber: receipt.blockNumber };
+    return await this.executeContractTransaction("endVoting", []);
   }
 
   /**
@@ -650,7 +657,7 @@ class Web3Service {
       rawMsg.includes("could not coalesce error") ||
       rawMsg.includes("endpoint returned")
     ) {
-      return "Node RPC Sepolia của MetaMask đang bị nghẽn mạng (quá tải), hoặc địa chỉ hợp đồng chưa được Deploy lên Sepolia. Vui lòng deploy hợp đồng lên Sepolia hoặc thử lại sau giây lát!";
+      return "MetaMask đang có giao dịch bị treo hoặc RPC bị nghẽn (-32002). Vui lòng mở ví MetaMask, kiểm tra mục 'Hoạt động' (Activity) và hủy/tăng tốc các giao dịch đang chờ!";
     }
 
     if (rawMsg.includes("contract_not_deployed_on_network")) {
