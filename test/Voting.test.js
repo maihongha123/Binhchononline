@@ -2,17 +2,17 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 /**
- * BỘ KIỂM THỬ TOÀN DIỆN SMART CONTRACT VOTING (NÂNG CẤP XỬ LÝ HÒA PHIẾU)
+ * BỘ KIỂM THỬ TOÀN DIỆN SMART CONTRACT VOTING
  * Phụ trách: Minh Em - Smart Contract & Core Logic Engineer
- * Mục tiêu: 29 Unit Test cases (Bao phủ đầy đủ luồng cơ bản, bảo mật và thuật toán 2 bước hòa phiếu)
+ * Mục tiêu: 34 Unit Test cases (29 tests nghiệp vụ chuẩn & bảo mật + 5 tests chuyên sâu thuật toán hòa phiếu)
  */
-describe("BỘ KIỂM THỬ TOÀN DIỆN HỆ THỐNG BÌNH CHỌN (29 TEST CASES)", function () {
+describe("BỘ KIỂM THỬ TOÀN DIỆN HỆ THỐNG BÌNH CHỌN (34 TEST CASES)", function () {
   let voting;
-  let admin, voter1, voter2, stranger;
+  let admin, voter1, voter2, voter3, voter4, voter5, stranger;
 
   beforeEach(async function () {
-    // Lấy danh sách ví giả lập từ môi trường Hardhat
-    [admin, voter1, voter2, stranger] = await ethers.getSigners();
+    // Lấy danh sách ví giả lập từ môi trường Hardhat (tối thiểu 7 ví phục vụ các kịch bản phân bổ phiếu)
+    [admin, voter1, voter2, voter3, voter4, voter5, stranger] = await ethers.getSigners();
 
     // Triển khai hợp đồng Voting mới trước mỗi bài kiểm thử
     const Voting = await ethers.getContractFactory("Voting");
@@ -117,9 +117,9 @@ describe("BỘ KIỂM THỬ TOÀN DIỆN HỆ THỐNG BÌNH CHỌN (29 TEST CASE
   });
 
   // =================================================================
-  // 5. BỎ PHIẾU HỢP LỆ & XEM KẾT QUẢ (5 TEST CASES - THUẬT TOÁN 2 BƯỚC)
+  // 5. BỎ PHIẾU HỢP LỆ & XEM KẾT QUẢ CƠ BẢN (5 TEST CASES)
   // =================================================================
-  describe("5. Bỏ phiếu Hợp lệ & Xem Kết quả (Xử lý Hòa phiếu)", function () {
+  describe("5. Bỏ phiếu Hợp lệ & Xem Kết quả (Xử lý Hòa phiếu Cơ bản)", function () {
     beforeEach(async function () {
       await voting.connect(admin).addCandidate("Nguyễn Văn A");
       await voting.connect(admin).addCandidate("Trần Thị B");
@@ -286,6 +286,105 @@ describe("BỘ KIỂM THỬ TOÀN DIỆN HỆ THỐNG BÌNH CHỌN (29 TEST CASE
       await expect(
         voting.connect(voter1).vote(1)
       ).to.be.revertedWith("Chuc nang khong the thuc hien o giai doan nay!");
+    });
+  });
+
+  // =================================================================
+  // 9. CHUYÊN SÂU THUẬT TOÁN HÒA PHIẾU & BIÊN PHỨC TẠP (5 TEST CASES NÂNG CAO)
+  // =================================================================
+  describe("9. Chuyên sâu Thuật toán Xác định Người thắng cuộc & Hòa phiếu", function () {
+    it("9.1 Hòa phiếu tay ba (3-way tie) khi cả 3 ứng cử viên đều có số phiếu bằng nhau (1 - 1 - 1)", async function () {
+      await voting.connect(admin).addCandidate("Ứng viên 1");
+      await voting.connect(admin).addCandidate("Ứng viên 2");
+      await voting.connect(admin).addCandidate("Ứng viên 3");
+      await voting.connect(admin).registerVoter(voter1.address);
+      await voting.connect(admin).registerVoter(voter2.address);
+      await voting.connect(admin).registerVoter(voter3.address);
+      await voting.connect(admin).startVoting();
+
+      await voting.connect(voter1).vote(1);
+      await voting.connect(voter2).vote(2);
+      await voting.connect(voter3).vote(3);
+      await voting.connect(admin).endVoting();
+
+      const [winnerName, highestVote] = await voting.getWinner();
+      expect(winnerName).to.equal("Ket qua hoa (Tie)");
+      expect(highestVote).to.equal(1);
+    });
+
+    it("9.2 Hòa phiếu giữa 2 ứng viên dẫn đầu trong cuộc đua có ứng viên thứ ba ít phiếu hơn (2 - 2 - 1)", async function () {
+      await voting.connect(admin).addCandidate("Ứng viên 1");
+      await voting.connect(admin).addCandidate("Ứng viên 2");
+      await voting.connect(admin).addCandidate("Ứng viên 3");
+      await voting.connect(admin).registerVoter(voter1.address);
+      await voting.connect(admin).registerVoter(voter2.address);
+      await voting.connect(admin).registerVoter(voter3.address);
+      await voting.connect(admin).registerVoter(voter4.address);
+      await voting.connect(admin).registerVoter(voter5.address);
+      await voting.connect(admin).startVoting();
+
+      await voting.connect(voter1).vote(1);
+      await voting.connect(voter2).vote(1);
+      await voting.connect(voter3).vote(2);
+      await voting.connect(voter4).vote(2);
+      await voting.connect(voter5).vote(3);
+      await voting.connect(admin).endVoting();
+
+      const [winnerName, highestVote] = await voting.getWinner();
+      expect(winnerName).to.equal("Ket qua hoa (Tie)");
+      expect(highestVote).to.equal(2);
+    });
+
+    it("9.3 Thắng sát nút khi ứng viên dẫn đầu hơn đúng 1 phiếu so với các ứng viên còn lại (2 - 1 - 1)", async function () {
+      await voting.connect(admin).addCandidate("Ứng viên 1");
+      await voting.connect(admin).addCandidate("Ứng viên 2");
+      await voting.connect(admin).addCandidate("Ứng viên 3");
+      await voting.connect(admin).registerVoter(voter1.address);
+      await voting.connect(admin).registerVoter(voter2.address);
+      await voting.connect(admin).registerVoter(voter3.address);
+      await voting.connect(admin).registerVoter(voter4.address);
+      await voting.connect(admin).startVoting();
+
+      await voting.connect(voter1).vote(1);
+      await voting.connect(voter2).vote(1);
+      await voting.connect(voter3).vote(2);
+      await voting.connect(voter4).vote(3);
+      await voting.connect(admin).endVoting();
+
+      const [winnerName, highestVote] = await voting.getWinner();
+      expect(winnerName).to.equal("Ứng viên 1");
+      expect(highestVote).to.equal(2);
+    });
+
+    it("9.4 Ứng cử viên nằm ở cuối danh sách đắc cử nhằm loại trừ hoàn toàn định kiến vị trí mảng", async function () {
+      await voting.connect(admin).addCandidate("Ứng viên Đầu");
+      await voting.connect(admin).addCandidate("Ứng viên Giữa");
+      await voting.connect(admin).addCandidate("Ứng viên Cuối");
+      await voting.connect(admin).registerVoter(voter1.address);
+      await voting.connect(admin).registerVoter(voter2.address);
+      await voting.connect(admin).startVoting();
+
+      await voting.connect(voter1).vote(3);
+      await voting.connect(voter2).vote(3);
+      await voting.connect(admin).endVoting();
+
+      const [winnerName, highestVote] = await voting.getWinner();
+      expect(winnerName).to.equal("Ứng viên Cuối");
+      expect(highestVote).to.equal(2);
+    });
+
+    it("9.5 Cuộc bầu cử chỉ có duy nhất 1 phiếu bầu xác định đúng người thắng và không hòa với ứng viên 0 phiếu", async function () {
+      await voting.connect(admin).addCandidate("Ứng viên A");
+      await voting.connect(admin).addCandidate("Ứng viên B");
+      await voting.connect(admin).registerVoter(voter1.address);
+      await voting.connect(admin).startVoting();
+
+      await voting.connect(voter1).vote(1);
+      await voting.connect(admin).endVoting();
+
+      const [winnerName, highestVote] = await voting.getWinner();
+      expect(winnerName).to.equal("Ứng viên A");
+      expect(highestVote).to.equal(1);
     });
   });
 });
