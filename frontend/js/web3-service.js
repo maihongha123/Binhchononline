@@ -361,19 +361,7 @@ class Web3Service {
    */
   async ensureContractReady() {
     if (!this.contract) throw new Error("Chưa kết nối ví!");
-    if (!this.contractAddress) return;
-    try {
-      const readProv = this.getReadProvider();
-      const code = await readProv.getCode(this.contractAddress);
-      if (!code || code === "0x") {
-        throw new Error("CONTRACT_NOT_DEPLOYED_ON_NETWORK");
-      }
-    } catch (err) {
-      if (err.message === "CONTRACT_NOT_DEPLOYED_ON_NETWORK") {
-        throw err;
-      }
-      console.warn("[Web3Service] Cảnh báo kiểm tra bytecode contract:", err.message);
-    }
+    return true;
   }
 
   /**
@@ -386,7 +374,7 @@ class Web3Service {
       throw new Error("Mã ứng viên không hợp lệ!");
     }
     console.log(`[Web3Service - Phase 5] Bắt đầu gửi giao dịch bỏ phiếu cho Ứng viên #${candidateId}...`);
-    const tx = await this.contract.vote(candidateId);
+    const tx = await this.contract.vote(candidateId, { gasLimit: 500000 });
     console.log(`[Web3Service - Phase 5] Giao dịch đã phát sóng (TxHash: ${tx.hash}). Đang đợi đóng khối...`);
     const receipt = await tx.wait();
     console.log(`[Web3Service - Phase 5] Giao dịch thành công tại Block #${receipt.blockNumber}!`);
@@ -404,7 +392,7 @@ class Web3Service {
       throw new Error("Tên ứng cử viên không được để trống!");
     }
     console.log(`[Web3Service - Phase 5] Admin gửi giao dịch thêm ứng viên: "${trimmed}"...`);
-    const tx = await this.contract.addCandidate(trimmed);
+    const tx = await this.contract.addCandidate(trimmed, { gasLimit: 500000 });
     console.log(`[Web3Service - Phase 5] Đã phát sóng Tx: ${tx.hash}. Đang đợi xác nhận...`);
     const receipt = await tx.wait();
     return { txHash: tx.hash, receipt, blockNumber: receipt.blockNumber };
@@ -421,7 +409,7 @@ class Web3Service {
       throw new Error("Địa chỉ ví Ethereum không hợp lệ (phải có dạng 0x... 42 ký tự)!");
     }
     console.log(`[Web3Service - Phase 5] Admin gửi giao dịch cấp quyền cho ví: ${addr}...`);
-    const tx = await this.contract.registerVoter(addr);
+    const tx = await this.contract.registerVoter(addr, { gasLimit: 500000 });
     console.log(`[Web3Service - Phase 5] Đã phát sóng Tx: ${tx.hash}. Đang đợi xác nhận...`);
     const receipt = await tx.wait();
     return { txHash: tx.hash, receipt, blockNumber: receipt.blockNumber };
@@ -433,7 +421,8 @@ class Web3Service {
   async startVoting() {
     await this.ensureContractReady();
     try {
-      const count = await this.contract.getCandidatesCount();
+      const readContract = this.getReadContract();
+      const count = await readContract.getCandidatesCount();
       if (Number(count) < 2) {
         throw new Error("Chưa đủ điều kiện: Cần có ít nhất 2 ứng cử viên trên Blockchain để mở hòm phiếu! Vui lòng thêm ứng cử viên trước.");
       }
@@ -443,7 +432,7 @@ class Web3Service {
       }
     }
     console.log("[Web3Service - Phase 5] Admin gửi giao dịch mở hòm phiếu (startVoting)...");
-    const tx = await this.contract.startVoting();
+    const tx = await this.contract.startVoting({ gasLimit: 500000 });
     console.log(`[Web3Service - Phase 5] Đã phát sóng Tx: ${tx.hash}. Đang đợi xác nhận...`);
     const receipt = await tx.wait();
     return { txHash: tx.hash, receipt, blockNumber: receipt.blockNumber };
@@ -455,7 +444,7 @@ class Web3Service {
   async endVoting() {
     await this.ensureContractReady();
     console.log("[Web3Service - Phase 5] Admin gửi giao dịch đóng hòm phiếu (endVoting)...");
-    const tx = await this.contract.endVoting();
+    const tx = await this.contract.endVoting({ gasLimit: 500000 });
     console.log(`[Web3Service - Phase 5] Đã phát sóng Tx: ${tx.hash}. Đang đợi xác nhận...`);
     const receipt = await tx.wait();
     return { txHash: tx.hash, receipt, blockNumber: receipt.blockNumber };
