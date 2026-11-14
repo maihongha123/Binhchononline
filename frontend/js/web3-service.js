@@ -251,13 +251,15 @@ class Web3Service {
 
     // Kiểm tra xem contract đã có mã bytecode thực tế trên mạng hiện tại chưa
     try {
-      const code = await this.provider.getCode(this.contractAddress);
+      const readProv = this.getReadProvider();
+      const readContract = this.getReadContract();
+      const code = await readProv.getCode(this.contractAddress);
       if (code && code !== "0x") {
         const [onChainTitle, statusRaw, totalVotesRaw, rawCandidates] = await Promise.all([
-          this.contract.electionName(),
-          this.contract.currentStatus(),
-          this.contract.totalVotes(),
-          this.contract.getCandidates()
+          readContract.electionName(),
+          readContract.currentStatus(),
+          readContract.totalVotes(),
+          readContract.getCandidates()
         ]);
 
         title = onChainTitle;
@@ -276,7 +278,7 @@ class Web3Service {
 
         if (status === 2) {
           try {
-            const winRes = await this.contract.getWinner();
+            const winRes = await readContract.getWinner();
             winner = { name: winRes[0], voteCount: Number(winRes[1]) };
           } catch (e) {
             console.warn("[Web3Service] Lỗi getWinner:", e);
@@ -293,9 +295,11 @@ class Web3Service {
     let voterInfo = { isRegistered: true, hasVoted: false, votedCandidateId: 0 };
     if (this.currentAccount) {
       try {
-        const code = await this.provider.getCode(this.contractAddress);
+        const readProv = this.getReadProvider();
+        const readContract = this.getReadContract();
+        const code = await readProv.getCode(this.contractAddress);
         if (code && code !== "0x") {
-          const v = await this.contract.voters(this.currentAccount);
+          const v = await readContract.voters(this.currentAccount);
           voterInfo = {
             isRegistered: Boolean(v.isRegistered),
             hasVoted: Boolean(v.hasVoted),
@@ -330,13 +334,37 @@ class Web3Service {
   // ==============================================================================
 
   /**
+   * Cung cấp Read Provider độc lập (Publicnode RPC) để không bị phụ thuộc vào RPC rate-limit của MetaMask
+   */
+  getReadProvider() {
+    const chainIdStr = this.chainId ? this.chainId.toString() : "11155111";
+    if (chainIdStr === "11155111") {
+      if (!this._cachedReadProvider) {
+        this._cachedReadProvider = new ethers.JsonRpcProvider("https://ethereum-sepolia-rpc.publicnode.com");
+      }
+      return this._cachedReadProvider;
+    }
+    return this.provider || new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+  }
+
+  /**
+   * Cung cấp Contract Instance chế độ chỉ đọc với độ tin cậy cao
+   */
+  getReadContract() {
+    const readProv = this.getReadProvider();
+    const activeAbi = this.abi || this.FALLBACK_ABI;
+    return new ethers.Contract(this.contractAddress, activeAbi, readProv);
+  }
+
+  /**
    * Kiểm tra xem địa chỉ hợp đồng đã thực sự có mã bytecode trên mạng đang kết nối chưa
    */
   async ensureContractReady() {
     if (!this.contract) throw new Error("Chưa kết nối ví!");
-    if (!this.provider || !this.contractAddress) return;
+    if (!this.contractAddress) return;
     try {
-      const code = await this.provider.getCode(this.contractAddress);
+      const readProv = this.getReadProvider();
+      const code = await readProv.getCode(this.contractAddress);
       if (!code || code === "0x") {
         throw new Error("CONTRACT_NOT_DEPLOYED_ON_NETWORK");
       }
