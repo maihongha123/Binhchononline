@@ -136,6 +136,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       ui.showToast("Thiếu thông tin", "Vui lòng nhập họ và tên ứng cử viên!", "warning", 3000);
       return;
     }
+    ui.dom.addCandidateBtn.disabled = true;
     const toastId = ui.showToast("Đang thêm ứng viên", `Đang gửi giao dịch thêm "${name}" lên Blockchain...`, "loading", 0);
     try {
       await web3.addCandidate(name);
@@ -146,6 +147,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (err) {
       ui.removeToast(toastId);
       ui.showToast("Thêm thất bại", web3.parseError(err), "error", 5000);
+    } finally {
+      ui.dom.addCandidateBtn.disabled = false;
     }
   });
 
@@ -155,6 +158,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       ui.showToast("Thiếu thông tin", "Vui lòng nhập địa chỉ ví cử tri!", "warning", 3000);
       return;
     }
+    ui.dom.registerVoterBtn.disabled = true;
     const toastId = ui.showToast("Đang cấp quyền", `Đang ghi nhận quyền cử tri cho ${addr.substring(0, 8)}...`, "loading", 0);
     try {
       await web3.registerVoter(addr);
@@ -165,10 +169,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (err) {
       ui.removeToast(toastId);
       ui.showToast("Cấp quyền thất bại", web3.parseError(err), "error", 5000);
+    } finally {
+      ui.dom.registerVoterBtn.disabled = false;
     }
   });
 
   ui.dom.startVotingBtn.addEventListener("click", async () => {
+    ui.dom.startVotingBtn.disabled = true;
     const toastId = ui.showToast("Đang mở hòm phiếu", "Đang chuyển trạng thái sang giai đoạn Bỏ Phiếu...", "loading", 0);
     try {
       await web3.startVoting();
@@ -178,10 +185,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (err) {
       ui.removeToast(toastId);
       ui.showToast("Lỗi mở cuộc bình chọn", web3.parseError(err), "error", 5000);
+    } finally {
+      ui.dom.startVotingBtn.disabled = false;
     }
   });
 
   ui.dom.endVotingBtn.addEventListener("click", async () => {
+    ui.dom.endVotingBtn.disabled = true;
     const toastId = ui.showToast("Đang đóng hòm phiếu", "Đang khóa hòm phiếu và chuyển sang giai đoạn Kết Thúc...", "loading", 0);
     try {
       await web3.endVoting();
@@ -191,6 +201,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (err) {
       ui.removeToast(toastId);
       ui.showToast("Lỗi đóng cuộc bình chọn", web3.parseError(err), "error", 5000);
+    } finally {
+      ui.dom.endVotingBtn.disabled = false;
     }
   });
 
