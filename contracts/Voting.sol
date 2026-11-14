@@ -113,4 +113,26 @@ contract Voting {
         currentStatus = WorkflowStatus.Ended;
         emit StatusChanged(WorkflowStatus.Voting, WorkflowStatus.Ended);
     }
+
+    // Cử tri thực hiện bỏ phiếu cho một ứng viên (Chuẩn Checks-Effects-Interactions)
+    function vote(uint256 _candidateId) 
+        external 
+        checkStatus(WorkflowStatus.Voting) 
+    {
+        Voter storage sender = voters[msg.sender];
+
+        // 1. Checks: Kiểm tra điều kiện hợp lệ
+        require(sender.isRegistered, "Ban khong co ten trong danh sach duoc phep bo phieu!");
+        require(!sender.hasVoted, "Ban da bo phieu roi, khong the bo phieu lai!");
+        require(_candidateId > 0 && _candidateId <= candidates.length, "Ma so ung vien khong hop le!");
+
+        // 2. Effects: Cập nhật trạng thái cử tri và số phiếu
+        sender.hasVoted = true;
+        sender.votedCandidateId = _candidateId;
+        candidates[_candidateId - 1].voteCount += 1;
+        totalVotes += 1;
+
+        // 3. Interactions: Phát sự kiện ra Blockchain
+        emit VoteCasted(msg.sender, _candidateId);
+    }
 }
