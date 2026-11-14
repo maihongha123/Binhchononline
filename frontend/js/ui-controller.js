@@ -402,7 +402,7 @@ class UIController {
   }
 
   // ============================================================================
-  // BẢNG VINH DANH NGƯỜI THẮNG CUỘC (WINNER SPOTLIGHT)
+  // PHASE 9 (Thành viên 3): BẢNG VINH DANH NGƯỜI THẮNG CUỘC (WINNER SPOTLIGHT PODIUM)
   // ============================================================================
   renderWinnerBanner(winner, totalVotes) {
     if (winner && winner.name) {

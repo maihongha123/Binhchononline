@@ -689,7 +689,7 @@ body {
 }
 
 /* ==========================================================================
-   WINNER SPOTLIGHT / BANNER
+   PHASE 9 (Thành viên 3): WINNER SPOTLIGHT PODIUM & GLOW EFFECTS
    ========================================================================== */
 .winner-banner {
   position: relative;
@@ -1276,7 +1276,9 @@ body {
   display: none !important;
 }
 
-/* Responsive adjustments */
+/* ==========================================================================
+   PHASE 9 (Thành viên 3): RESPONSIVE ADJUSTMENTS (MOBILE & TABLET OPTIMIZATION)
+   ========================================================================== */
 @media (max-width: 640px) {
   .app-container {
     padding: 16px;
@@ -1302,5 +1304,12 @@ body {
   
   .modal-actions {
     flex-direction: column;
+  }
+
+  .winner-banner {
+    flex-direction: column;
+    text-align: center;
+    gap: 14px;
+    padding: 20px 16px;
   }
 }
