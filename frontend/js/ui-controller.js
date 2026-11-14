@@ -300,7 +300,7 @@ class UIController {
   }
 
   // ============================================================================
-  // RENDER DANH SÁCH ỨNG CỬ VIÊN VỚI THANH TIẾN ĐỘ % DYNAMIC
+  // PHASE 6 (Thành viên 3): RENDER DANH SÁCH ỨNG CỬ VIÊN VỚI THANH TIẾN ĐỘ % DYNAMIC & HIGHLIGHT
   // ============================================================================
   renderCandidates(candidates, status, totalVotes, highestVote, voterInfo, onVoteButtonClick) {
     this.dom.candidateList.innerHTML = "";

@@ -924,8 +924,17 @@ body {
   transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ==========================================================================
+   PHASE 6 (Thành viên 3): THANH TIẾN ĐỘ % DYNAMIC & HIGHLIGHT ỨNG VIÊN DẪN ĐẦU
+   ========================================================================== */
+.candidate-card.leading-card {
+  border-color: rgba(245, 158, 11, 0.6);
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.2);
+}
+
 .progress-bar-fill.lead-candidate {
   background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
 }
 
 /* Empty State */
