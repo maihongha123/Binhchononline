@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 /**
  * @title Voting (Hệ thống Bình chọn Trực tuyến)
  * Phụ trách: Minh Em - Smart Contract
- * @dev Hợp đồng thông minh bình chọn Blockchain đơn giản, rõ ràng, dễ hiểu.
  */
 contract Voting {
     // Cấu trúc thông tin ứng viên
@@ -62,11 +61,7 @@ contract Voting {
         currentStatus = WorkflowStatus.Registering;
     }
 
-    // ==============================================================================
-    // CÁC HÀM QUẢN TRỊ (DÀNH CHO ADMIN)
-    // ==============================================================================
-
-    // Thêm một ứng cử viên mới
+    // Thêm một ứng cử viên mới vào danh sách
     function addCandidate(string memory _name) 
         external 
         onlyAdmin 
@@ -74,17 +69,17 @@ contract Voting {
     {
         require(bytes(_name).length > 0, "Ten ung vien khong duoc de trong!");
 
-        uint256 newId = candidates.length + 1;
+        uint256 id = candidates.length + 1;
         candidates.push(Candidate({
-            id: newId,
+            id: id,
             name: _name,
             voteCount: 0
         }));
 
-        emit CandidateAdded(newId, _name);
+        emit CandidateAdded(id, _name);
     }
 
-    // Cấp quyền bầu cử cho một địa chỉ ví
+    // Cấp quyền bỏ phiếu cho một địa chỉ ví cử tri
     function registerVoter(address _voter) 
         external 
         onlyAdmin 
@@ -93,7 +88,6 @@ contract Voting {
         require(_voter != address(0), "Dia chi vi khong hop le!");
         require(!voters[_voter].isRegistered, "Cu tri nay da duoc dang ky truoc do!");
 
-        // Ghi nhận cử tri đã được cấp quyền
         voters[_voter].isRegistered = true;
 
         emit VoterRegistered(_voter);
@@ -120,35 +114,29 @@ contract Voting {
         emit StatusChanged(WorkflowStatus.Voting, WorkflowStatus.Ended);
     }
 
-    // ==============================================================================
-    // CÁC HÀM CỬ TRI & TRA CỨU KẾT QUẢ
-    // ==============================================================================
-
-    // Cử tri thực hiện bỏ phiếu cho một ứng viên
+    // Cử tri thực hiện bỏ phiếu cho một ứng viên (Chuẩn Checks-Effects-Interactions)
     function vote(uint256 _candidateId) 
         external 
         checkStatus(WorkflowStatus.Voting) 
     {
         Voter storage sender = voters[msg.sender];
 
-        // Bước 1: Kiểm tra điều kiện hợp lệ
+        // 1. Checks: Kiểm tra điều kiện hợp lệ
         require(sender.isRegistered, "Ban khong co ten trong danh sach duoc phep bo phieu!");
         require(!sender.hasVoted, "Ban da bo phieu roi, khong the bo phieu lai!");
         require(_candidateId > 0 && _candidateId <= candidates.length, "Ma so ung vien khong hop le!");
 
-        // Bước 2: Cập nhật trạng thái cử tri đã bỏ phiếu
+        // 2. Effects: Cập nhật trạng thái cử tri và số phiếu
         sender.hasVoted = true;
         sender.votedCandidateId = _candidateId;
-
-        // Bước 3: Tăng phiếu cho ứng viên và tổng số phiếu
         candidates[_candidateId - 1].voteCount += 1;
         totalVotes += 1;
 
-        // Bước 4: Phát sự kiện
+        // 3. Interactions: Phát sự kiện ra Blockchain
         emit VoteCasted(msg.sender, _candidateId);
     }
 
-    // Lấy toàn bộ danh sách ứng cử viên để hiển thị lên giao diện
+    // Lấy toàn bộ danh sách ứng cử viên để hiển thị lên giao diện (miễn phí Gas)
     function getCandidates() external view returns (Candidate[] memory) {
         return candidates;
     }

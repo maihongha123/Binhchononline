@@ -2,6 +2,7 @@
 // DỰ ÁN BÌNH CHỌN BLOCKCHAIN (DAPP)
 // PHÂN HỆ: GIAO DIỆN NGƯỜI DÙNG & TƯƠNG TÁC (UI/UX)
 // TÁC GIẢ CHỊU TRÁCH NHIỆM: THÀNH VIÊN 3 (Frontend UI/UX Developer)
+// PHASE 5: Tách module ui-controller.js quản lý DOM và render ứng cử viên
 // ==============================================================================
 
 class UIController {
@@ -72,7 +73,7 @@ class UIController {
   }
 
   // ============================================================================
-  // HỆ THỐNG TOAST NOTIFICATION 5 TRẠNG THÁI (SUCCESS, ERROR, WARNING, INFO, LOADING)
+  // PHASE 7 (Thành viên 3): HỆ THỐNG TOAST NOTIFICATION 5 TRẠNG THÁI THAY THẾ ALERT
   // ============================================================================
   showToast(title, message, type = "info", duration = 4000) {
     if (!this.dom.toastContainer) return null;
@@ -299,7 +300,7 @@ class UIController {
   }
 
   // ============================================================================
-  // RENDER DANH SÁCH ỨNG CỬ VIÊN VỚI THANH TIẾN ĐỘ % DYNAMIC
+  // PHASE 6 (Thành viên 3): RENDER DANH SÁCH ỨNG CỬ VIÊN VỚI THANH TIẾN ĐỘ % DYNAMIC & HIGHLIGHT
   // ============================================================================
   renderCandidates(candidates, status, totalVotes, highestVote, voterInfo, onVoteButtonClick) {
     this.dom.candidateList.innerHTML = "";
