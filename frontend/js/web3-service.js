@@ -2,7 +2,7 @@
 // DỰ ÁN BÌNH CHỌN BLOCKCHAIN (DAPP)
 // PHÂN HỆ: WEB3 MIDDLEWARE & GIAO TIẾP BLOCKCHAIN
 // TÁC GIẢ CHỊU TRÁCH NHIỆM: THÀNH VIÊN 2 (Web3 Middleware & Deployment Engineer)
-// PHASE 7: Chuẩn hóa hệ thống bắt lỗi ngoại lệ ACTION_REJECTED và Revert reasons
+// PHASE 8: Cài đặt cơ chế autoConnect tự động khôi phục kết nối ví khi F5
 // ==============================================================================
 
 class Web3Service {
@@ -150,20 +150,25 @@ class Web3Service {
   }
 
   /**
-   * Tự động kết nối lại nếu người dùng đã cấp quyền từ trước (khi F5 trang)
+   * PHASE 8: Cài đặt cơ chế autoConnect tự động khôi phục kết nối ví khi F5
+   * Sử dụng phương thức eth_accounts không xâm lấn (non-intrusive) để kiểm tra phiên kết nối cũ
+   * Tránh bật popup MetaMask gây phiền hà nếu người dùng chưa từng cấp quyền
    */
   async autoConnect() {
     if (typeof window.ethereum === "undefined" || window.location.protocol === "file:") {
       return null;
     }
     try {
+      console.log("[Web3Service - Phase 8] Đang kiểm tra phiên kết nối ví đã lưu...");
       const accounts = await window.ethereum.request({ method: "eth_accounts" });
       if (accounts && accounts.length > 0) {
-        console.log("[Web3Service] Tự động kết nối lại ví:", accounts[0]);
+        console.log(`[Web3Service - Phase 8] Tìm thấy phiên ví hợp lệ: ${accounts[0]}. Đang tự động kết nối...`);
         return await this.connect();
+      } else {
+        console.log("[Web3Service - Phase 8] Không có phiên ví nào được cấp quyền trước đó.");
       }
     } catch (err) {
-      console.warn("[Web3Service] Lỗi autoConnect:", err);
+      console.warn("[Web3Service - Phase 8] Lỗi khi tự động khôi phục kết nối ví:", err.message);
     }
     return null;
   }
