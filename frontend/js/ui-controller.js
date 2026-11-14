@@ -128,7 +128,7 @@ class UIController {
   }
 
   // ============================================================================
-  // HỘP THOẠI MODAL XÁC NHẬN BỎ PHIẾU
+  // PHASE 8 (Thành viên 3): HỘP THOẠI MODAL XÁC NHẬN BỎ PHIẾU CHỐNG THAO TÁC NHẦM
   // ============================================================================
   openVoteModal(candidateId, candidateName, onConfirmCallback) {
     this.pendingVoteId = candidateId;
