@@ -146,23 +146,43 @@ contract Voting {
         return candidates.length;
     }
 
-    // Xác định ứng cử viên có số phiếu cao nhất khi cuộc bầu cử kết thúc
+    // Xác định ứng cử viên có số phiếu cao nhất khi cuộc bầu cử kết thúc (Thuật toán 2 bước xử lý hòa phiếu)
     function getWinner() 
         external 
         view 
         checkStatus(WorkflowStatus.Ended) 
         returns (string memory winnerName, uint256 highestVote) 
     {
+        // Trường hợp 0: Chưa có bất kỳ phiếu bầu nào được ghi nhận
+        if (totalVotes == 0) {
+            return ("Khong co phieu bau", 0);
+        }
+
+        // Bước 1: Quét tìm số phiếu cao nhất trong danh sách ứng cử viên
+        uint256 maxVotes = 0;
         uint256 winningIndex = 0;
 
-        // Duyệt tìm ứng viên có số phiếu cao nhất (thuật toán tìm Max cơ bản)
-        for (uint256 i = 1; i < candidates.length; i++) {
-            if (candidates[i].voteCount > candidates[winningIndex].voteCount) {
+        for (uint256 i = 0; i < candidates.length; i++) {
+            if (candidates[i].voteCount > maxVotes) {
+                maxVotes = candidates[i].voteCount;
                 winningIndex = i;
             }
         }
 
-        winnerName = candidates[winningIndex].name;
-        highestVote = candidates[winningIndex].voteCount;
+        // Bước 2: Đếm số lượng ứng cử viên cùng đạt số phiếu cao nhất
+        uint256 tieCount = 0;
+        for (uint256 i = 0; i < candidates.length; i++) {
+            if (candidates[i].voteCount == maxVotes) {
+                tieCount++;
+            }
+        }
+
+        // Nếu có từ 2 ứng viên trở lên cùng đạt số phiếu cao nhất -> Bất phân thắng bại (Hòa)
+        if (tieCount > 1) {
+            return ("Ket qua hoa (Tie)", maxVotes);
+        }
+
+        // Nếu chỉ có duy nhất 1 ứng viên đạt số phiếu cao nhất -> Người đắc cử
+        return (candidates[winningIndex].name, maxVotes);
     }
 }

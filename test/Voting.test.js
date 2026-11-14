@@ -2,11 +2,11 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 /**
- * BỘ KIỂM THỬ TOÀN DIỆN SMART CONTRACT VOTING - PHASE 9
+ * BỘ KIỂM THỬ TOÀN DIỆN SMART CONTRACT VOTING (NÂNG CẤP XỬ LÝ HÒA PHIẾU)
  * Phụ trách: Minh Em - Smart Contract & Core Logic Engineer
- * Mục tiêu: 27 Unit Test cases (15 chuẩn cơ bản + 12 trường hợp biên & bảo mật nâng cao)
+ * Mục tiêu: 29 Unit Test cases (Bao phủ đầy đủ luồng cơ bản, bảo mật và thuật toán 2 bước hòa phiếu)
  */
-describe("BỘ KIỂM THỬ TOÀN DIỆN HỆ THỐNG BÌNH CHỌN (27 TEST CASES - PHASE 9)", function () {
+describe("BỘ KIỂM THỬ TOÀN DIỆN HỆ THỐNG BÌNH CHỌN (29 TEST CASES)", function () {
   let voting;
   let admin, voter1, voter2, stranger;
 
@@ -117,9 +117,9 @@ describe("BỘ KIỂM THỬ TOÀN DIỆN HỆ THỐNG BÌNH CHỌN (27 TEST CASE
   });
 
   // =================================================================
-  // 5. BỎ PHIẾU HỢP LỆ & XEM KẾT QUẢ CƠ BẢN (3 TEST CASES)
+  // 5. BỎ PHIẾU HỢP LỆ & XEM KẾT QUẢ (5 TEST CASES - THUẬT TOÁN 2 BƯỚC)
   // =================================================================
-  describe("5. Bỏ phiếu Hợp lệ & Xem Kết quả Cơ bản", function () {
+  describe("5. Bỏ phiếu Hợp lệ & Xem Kết quả (Xử lý Hòa phiếu)", function () {
     beforeEach(async function () {
       await voting.connect(admin).addCandidate("Nguyễn Văn A");
       await voting.connect(admin).addCandidate("Trần Thị B");
@@ -153,10 +153,28 @@ describe("BỘ KIỂM THỬ TOÀN DIỆN HỆ THỐNG BÌNH CHỌN (27 TEST CASE
       expect(winnerName).to.equal("Trần Thị B");
       expect(highestVote).to.equal(2);
     });
+
+    it("5.4 Xác định chính xác kết quả hòa (Tie) khi các ứng viên bằng số phiếu cao nhất", async function () {
+      await voting.connect(voter1).vote(1);
+      await voting.connect(voter2).vote(2);
+      await voting.connect(admin).endVoting();
+
+      const [winnerName, highestVote] = await voting.getWinner();
+      expect(winnerName).to.equal("Ket qua hoa (Tie)");
+      expect(highestVote).to.equal(1);
+    });
+
+    it("5.5 Trả về kết quả phù hợp khi cuộc bầu cử kết thúc mà không có ai bỏ phiếu", async function () {
+      await voting.connect(admin).endVoting();
+
+      const [winnerName, highestVote] = await voting.getWinner();
+      expect(winnerName).to.equal("Khong co phieu bau");
+      expect(highestVote).to.equal(0);
+    });
   });
 
   // =================================================================
-  // 6. BẢO MẬT PHÂN QUYỀN ADMIN & ĐẦU VÀO (4 TEST CASES - PHASE 9)
+  // 6. BẢO MẬT PHÂN QUYỀN ADMIN & ĐẦU VÀO (4 TEST CASES)
   // =================================================================
   describe("6. Bảo mật Phân quyền Admin & Dữ liệu Đầu vào", function () {
     it("6.1 Chặn tài khoản lạ không phải Admin cố tình thêm ứng viên", async function () {
@@ -186,7 +204,7 @@ describe("BỘ KIỂM THỬ TOÀN DIỆN HỆ THỐNG BÌNH CHỌN (27 TEST CASE
   });
 
   // =================================================================
-  // 7. KIỂM SOÁT QUY TRÌNH & MÁY TRẠNG THÁI (3 TEST CASES - PHASE 9)
+  // 7. KIỂM SOÁT QUY TRÌNH & MÁY TRẠNG THÁI (3 TEST CASES)
   // =================================================================
   describe("7. Kiểm soát Quy trình & Máy trạng thái", function () {
     it("7.1 Chặn mở hòm phiếu khi chưa có đủ tối thiểu 2 ứng cử viên", async function () {
@@ -217,7 +235,7 @@ describe("BỘ KIỂM THỬ TOÀN DIỆN HỆ THỐNG BÌNH CHỌN (27 TEST CASE
   });
 
   // =================================================================
-  // 8. BẢO MẬT BỎ PHIẾU & CHỐNG GIAN LẬN (5 TEST CASES - PHASE 9)
+  // 8. BẢO MẬT BỎ PHIẾU & CHỐNG GIAN LẬN (5 TEST CASES)
   // =================================================================
   describe("8. Bảo mật Bỏ phiếu & Chống Gian lận", function () {
     beforeEach(async function () {
