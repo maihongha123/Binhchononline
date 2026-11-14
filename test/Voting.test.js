@@ -2,11 +2,11 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 /**
- * BỘ KIỂM THỬ TỰ ĐỘNG SMART CONTRACT VOTING - PHASE 8
+ * BỘ KIỂM THỬ TOÀN DIỆN SMART CONTRACT VOTING - PHASE 9
  * Phụ trách: Minh Em - Smart Contract & Core Logic Engineer
- * Mục tiêu: 15 Unit Test cases kiểm thử các luồng chức năng cơ bản
+ * Mục tiêu: 27 Unit Test cases (15 chuẩn cơ bản + 12 trường hợp biên & bảo mật nâng cao)
  */
-describe("KIỂM THỬ CƠ BẢN HỆ THỐNG BÌNH CHỌN (15 TEST CASES - PHASE 8)", function () {
+describe("BỘ KIỂM THỬ TOÀN DIỆN HỆ THỐNG BÌNH CHỌN (27 TEST CASES - PHASE 9)", function () {
   let voting;
   let admin, voter1, voter2, stranger;
 
@@ -152,6 +152,122 @@ describe("KIỂM THỬ CƠ BẢN HỆ THỐNG BÌNH CHỌN (15 TEST CASES - PHAS
       const [winnerName, highestVote] = await voting.getWinner();
       expect(winnerName).to.equal("Trần Thị B");
       expect(highestVote).to.equal(2);
+    });
+  });
+
+  // =================================================================
+  // 6. BẢO MẬT PHÂN QUYỀN ADMIN & ĐẦU VÀO (4 TEST CASES - PHASE 9)
+  // =================================================================
+  describe("6. Bảo mật Phân quyền Admin & Dữ liệu Đầu vào", function () {
+    it("6.1 Chặn tài khoản lạ không phải Admin cố tình thêm ứng viên", async function () {
+      await expect(
+        voting.connect(stranger).addCandidate("Kẻ Xâm Nhập")
+      ).to.be.revertedWith("Chi nguoi quan tri (Admin) moi co quyen thuc hien!");
+    });
+
+    it("6.2 Chặn thêm ứng cử viên với tên rỗng", async function () {
+      await expect(
+        voting.connect(admin).addCandidate("")
+      ).to.be.revertedWith("Ten ung vien khong duoc de trong!");
+    });
+
+    it("6.3 Chặn cấp quyền cử tri cho địa chỉ ví rỗng (0x0)", async function () {
+      await expect(
+        voting.connect(admin).registerVoter(ethers.ZeroAddress)
+      ).to.be.revertedWith("Dia chi vi khong hop le!");
+    });
+
+    it("6.4 Chặn cấp quyền hai lần cho cùng một địa chỉ ví cử tri", async function () {
+      await voting.connect(admin).registerVoter(voter1.address);
+      await expect(
+        voting.connect(admin).registerVoter(voter1.address)
+      ).to.be.revertedWith("Cu tri nay da duoc dang ky truoc do!");
+    });
+  });
+
+  // =================================================================
+  // 7. KIỂM SOÁT QUY TRÌNH & MÁY TRẠNG THÁI (3 TEST CASES - PHASE 9)
+  // =================================================================
+  describe("7. Kiểm soát Quy trình & Máy trạng thái", function () {
+    it("7.1 Chặn mở hòm phiếu khi chưa có đủ tối thiểu 2 ứng cử viên", async function () {
+      await voting.connect(admin).addCandidate("Nguyễn Văn A");
+      await expect(
+        voting.connect(admin).startVoting()
+      ).to.be.revertedWith("Can it nhat 2 ung vien de bat dau cuoc bau cu!");
+    });
+
+    it("7.2 Chặn tài khoản lạ cố tình gọi mở hoặc đóng hòm phiếu", async function () {
+      await voting.connect(admin).addCandidate("Nguyễn Văn A");
+      await voting.connect(admin).addCandidate("Trần Thị B");
+
+      await expect(
+        voting.connect(stranger).startVoting()
+      ).to.be.revertedWith("Chi nguoi quan tri (Admin) moi co quyen thuc hien!");
+    });
+
+    it("7.3 Chặn gọi getWinner() để xem kết quả khi cuộc bầu cử chưa kết thúc", async function () {
+      await voting.connect(admin).addCandidate("Nguyễn Văn A");
+      await voting.connect(admin).addCandidate("Trần Thị B");
+      await voting.connect(admin).startVoting();
+
+      await expect(
+        voting.getWinner()
+      ).to.be.revertedWith("Chuc nang khong the thuc hien o giai doan nay!");
+    });
+  });
+
+  // =================================================================
+  // 8. BẢO MẬT BỎ PHIẾU & CHỐNG GIAN LẬN (5 TEST CASES - PHASE 9)
+  // =================================================================
+  describe("8. Bảo mật Bỏ phiếu & Chống Gian lận", function () {
+    beforeEach(async function () {
+      await voting.connect(admin).addCandidate("Nguyễn Văn A");
+      await voting.connect(admin).addCandidate("Trần Thị B");
+      await voting.connect(admin).registerVoter(voter1.address);
+      await voting.connect(admin).registerVoter(voter2.address);
+    });
+
+    it("8.1 Chặn bỏ phiếu khi cuộc bầu cử chưa mở (đang ở giai đoạn Registering)", async function () {
+      await expect(
+        voting.connect(voter1).vote(1)
+      ).to.be.revertedWith("Chuc nang khong the thuc hien o giai doan nay!");
+    });
+
+    it("8.2 Chặn người lạ chưa được cấp quyền tham gia bỏ phiếu", async function () {
+      await voting.connect(admin).startVoting();
+      await expect(
+        voting.connect(stranger).vote(1)
+      ).to.be.revertedWith("Ban khong co ten trong danh sach duoc phep bo phieu!");
+    });
+
+    it("8.3 Chặn cử tri bỏ phiếu lần thứ hai (Anti-double voting)", async function () {
+      await voting.connect(admin).startVoting();
+      await voting.connect(voter1).vote(1);
+
+      await expect(
+        voting.connect(voter1).vote(1)
+      ).to.be.revertedWith("Ban da bo phieu roi, khong the bo phieu lai!");
+    });
+
+    it("8.4 Chặn bỏ phiếu cho mã số ứng cử viên không tồn tại (ID 0 hoặc ID vượt quá)", async function () {
+      await voting.connect(admin).startVoting();
+
+      await expect(
+        voting.connect(voter1).vote(0)
+      ).to.be.revertedWith("Ma so ung vien khong hop le!");
+
+      await expect(
+        voting.connect(voter1).vote(999)
+      ).to.be.revertedWith("Ma so ung vien khong hop le!");
+    });
+
+    it("8.5 Chặn bỏ phiếu sau khi cuộc bầu cử đã kết thúc (Ended)", async function () {
+      await voting.connect(admin).startVoting();
+      await voting.connect(admin).endVoting();
+
+      await expect(
+        voting.connect(voter1).vote(1)
+      ).to.be.revertedWith("Chuc nang khong the thuc hien o giai doan nay!");
     });
   });
 });
