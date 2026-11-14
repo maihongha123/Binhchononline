@@ -11,7 +11,7 @@ class Web3Service {
     this.signer = null;
     this.contract = null;
     this.currentAccount = null;
-    this.contractAddress = "0x610178dA211FEF7D417bC0e6FeD39F05609AD788";
+    this.contractAddress = "0xE450503ff95CFbeE1636C6136CC169B7143c382F";
     this.contractAdmin = "0xaf9F37f8c2718bc71aD15dc0e67247C99f698C0d";
     this.chainId = 11155111n; // Mặc định chuyển sang Sepolia Testnet
     this.targetNetwork = "sepolia";
