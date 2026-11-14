@@ -70,7 +70,7 @@ class Web3Service {
    */
   async loadConfig() {
     try {
-      const res = await fetch("contract-config.json");
+      const res = await fetch(`contract-config.json?v=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         if (data.address) this.contractAddress = data.address;
@@ -404,6 +404,16 @@ class Web3Service {
    */
   async startVoting() {
     await this.ensureContractReady();
+    try {
+      const count = await this.contract.getCandidatesCount();
+      if (Number(count) < 2) {
+        throw new Error("Chưa đủ điều kiện: Cần có ít nhất 2 ứng cử viên trên Blockchain để mở hòm phiếu! Vui lòng thêm ứng cử viên trước.");
+      }
+    } catch (checkErr) {
+      if (checkErr.message.includes("ít nhất 2 ứng cử viên")) {
+        throw checkErr;
+      }
+    }
     console.log("[Web3Service - Phase 5] Admin gửi giao dịch mở hòm phiếu (startVoting)...");
     const tx = await this.contract.startVoting();
     console.log(`[Web3Service - Phase 5] Đã phát sóng Tx: ${tx.hash}. Đang đợi xác nhận...`);
