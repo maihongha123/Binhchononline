@@ -1,6 +1,8 @@
 // ==============================================================================
 // DỰ ÁN BÌNH CHỌN BLOCKCHAIN (DAPP)
 // PHÂN HỆ: ĐIỀU PHỐI TÍCH HỢP HỆ THỐNG (SYSTEM ORCHESTRATION BRIDGE)
+// TÁC GIẢ CHỊU TRÁCH NHIỆM: THÀNH VIÊN 2 (Web3 Middleware & Deployment Engineer)
+// PHASE 9: Cập nhật địa chỉ hợp đồng từ Remix Sepolia và tích hợp main bridge
 // KẾT NỐI: WEB3 SERVICE (THÀNH VIÊN 2) <---> UI CONTROLLER (THÀNH VIÊN 3)
 // ==============================================================================
 
