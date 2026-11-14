@@ -2,6 +2,7 @@
 // DỰ ÁN BÌNH CHỌN BLOCKCHAIN (DAPP)
 // PHÂN HỆ: GIAO DIỆN NGƯỜI DÙNG & TƯƠNG TÁC (UI/UX)
 // TÁC GIẢ CHỊU TRÁCH NHIỆM: THÀNH VIÊN 3 (Frontend UI/UX Developer)
+// PHASE 5: Tách module ui-controller.js quản lý DOM và render ứng cử viên
 // ==============================================================================
 
 class UIController {
