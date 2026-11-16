@@ -42,14 +42,15 @@ contract Voting {
     event StatusChanged(WorkflowStatus previousStatus, WorkflowStatus newStatus);
     event VoteCasted(address indexed voter, uint256 indexed candidateId);
 
+    // Bộ điều kiện kiểm tra chỉ cho phép người quản trị thực hiện
     modifier onlyAdmin() {
-        require(msg.sender == admin, "Chỉ có quản trị viên được thực hiện !");
+        require(msg.sender == admin, "Chi nguoi quan tri (Admin) moi co quyen thuc hien!");
         _;
     }
 
     // Bộ điều kiện kiểm tra giai đoạn thực hiện hợp lệ
     modifier checkStatus(WorkflowStatus _status) {
-        require(currentStatus == _status, "Chức năng không thể thực hiện ở giai đoạn này");
+        require(currentStatus == _status, "Chuc nang khong the thuc hien o giai doan nay!");
         _;
     }
 
@@ -66,7 +67,7 @@ contract Voting {
         onlyAdmin 
         checkStatus(WorkflowStatus.Registering) 
     {
-        require(bytes(_name).length > 0, "Tên ứng viên không được phép để trống!");
+        require(bytes(_name).length > 0, "Ten ung vien khong duoc de trong!");
 
         uint256 id = candidates.length + 1;
         candidates.push(Candidate({
@@ -84,8 +85,8 @@ contract Voting {
         onlyAdmin 
         checkStatus(WorkflowStatus.Registering) 
     {
-        require(_voter != address(0), "Địa chỉ ví không hợp lệ!");
-        require(!voters[_voter].isRegistered, "Cử tri này đã đăng ký trước đó!");
+        require(_voter != address(0), "Dia chi vi khong hop le!");
+        require(!voters[_voter].isRegistered, "Cu tri nay da duoc dang ky truoc do!");
 
         voters[_voter].isRegistered = true;
 
@@ -98,7 +99,7 @@ contract Voting {
         onlyAdmin 
         checkStatus(WorkflowStatus.Registering) 
     {
-        require(candidates.length >= 2, "Cần ít nhất phải có 2 ứng viên để bắt đầu mở bình chọn!");
+        require(candidates.length >= 2, "Can it nhat 2 ung vien de bat dau cuoc bau cu!");
         currentStatus = WorkflowStatus.Voting;
         emit StatusChanged(WorkflowStatus.Registering, WorkflowStatus.Voting);
     }
@@ -121,9 +122,9 @@ contract Voting {
         Voter storage sender = voters[msg.sender];
 
         // 1. Checks: Kiểm tra điều kiện hợp lệ
-        require(sender.isRegistered, "Bạn không có tên trong danh sách được phép bình chọn!");
-        require(!sender.hasVoted, "Bạn đã bình chọn rồi, không được phép bình chọn tiếp tục!");
-        require(_candidateId > 0 && _candidateId <= candidates.length, "Mã số ứng viên không hợp lệ!");
+        require(sender.isRegistered, "Ban khong co ten trong danh sach duoc phep bo phieu!");
+        require(!sender.hasVoted, "Ban da bo phieu roi, khong the bo phieu lai!");
+        require(_candidateId > 0 && _candidateId <= candidates.length, "Ma so ung vien khong hop le!");
 
         // 2. Effects: Cập nhật trạng thái cử tri và số phiếu
         sender.hasVoted = true;
@@ -154,7 +155,7 @@ contract Voting {
     {
         // Trường hợp 0: Chưa có bất kỳ phiếu bầu nào được ghi nhận
         if (totalVotes == 0) {
-            return ("Không có phiếu bầu chọn được ghi nhận", 0);
+            return ("Khong co phieu bau", 0);
         }
 
         // Bước 1: Quét tìm số phiếu cao nhất trong danh sách ứng cử viên
@@ -178,7 +179,7 @@ contract Voting {
 
         // Nếu có từ 2 ứng viên trở lên cùng đạt số phiếu cao nhất -> Bất phân thắng bại (Hòa)
         if (tieCount > 1) {
-            return ("Kết quả bầu chọn hòa", maxVotes);
+            return ("Ket qua hoa (Tie)", maxVotes);
         }
 
         // Nếu chỉ có duy nhất 1 ứng viên đạt số phiếu cao nhất -> Người đắc cử
