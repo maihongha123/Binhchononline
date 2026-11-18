@@ -2,7 +2,7 @@
 // DỰ ÁN BÌNH CHỌN BLOCKCHAIN (DAPP)
 // PHÂN HỆ: ĐIỀU PHỐI TÍCH HỢP HỆ THỐNG (SYSTEM ORCHESTRATION BRIDGE)
 // TÁC GIẢ CHỊU TRÁCH NHIỆM: THÀNH VIÊN 2 (Web3 Middleware & Deployment Engineer)
-// PHASE 10: Tích hợp thanh chọn đa cuộc bình chọn Multi-Poll và Modal tạo Poll
+// PHASE 11: Tích hợp luồng chuyển đổi poll realtime trong main bridge và cập nhật seed script
 // KẾT NỐI: WEB3 SERVICE (THÀNH VIÊN 2) <---> UI CONTROLLER (THÀNH VIÊN 3)
 // ==============================================================================
 
@@ -17,14 +17,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   await web3.loadConfig();
   ui.updateNetworkBadge(web3.getNetworkName(), web3.chainId.toString());
 
-  // 3. Hàm làm mới toàn bộ dữ liệu từ Blockchain
-  async function refreshData(silent = false) {
+  // 3. Hàm làm mới toàn bộ dữ liệu từ Blockchain (hỗ trợ chuyển Poll mượt mà)
+  async function refreshData(silent = false, targetPollId = null) {
     if (!silent) {
       ui.showToast("Đang làm mới", "Đang truy vấn dữ liệu mới nhất từ Blockchain...", "info", 1500);
     }
 
     try {
-      const data = await web3.fetchElectionData();
+      const activeId = targetPollId || web3.activePollId;
+      const data = await web3.fetchElectionData(activeId);
 
       // Cập nhật số liệu thống kê
       ui.dom.electionTitleH1.textContent = data.title;
@@ -39,13 +40,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       ui.updateAdminControls(data.status, data.isAdmin);
       ui.renderWinnerBanner(data.winner, data.totalVotes);
 
-      // PHASE 10: Render thanh chọn cuộc bình chọn (Multi-Poll Selector)
+      // PHASE 10 & 11: Render thanh chọn cuộc bình chọn (Multi-Poll Selector)
       if (data.polls && ui.renderPollSelector) {
         ui.renderPollSelector(data.polls, data.activePollId, async (newPollId) => {
-          ui.showToast("Chuyển cuộc bình chọn", `Đang nạp dữ liệu cuộc bình chọn #${newPollId}...`, "info", 1500);
+          ui.showToast("Chuyển cuộc bình chọn", `Đang nạp dữ liệu cuộc bình chọn #${newPollId}...`, "info", 1200);
           try {
             await web3.switchActivePoll(newPollId);
-            await refreshData(true);
+            await refreshData(true, newPollId);
+            ui.showToast("Đã Chuyển Phiên", `Đang hiển thị dữ liệu cuộc bình chọn #${newPollId}`, "success", 2000);
           } catch (err) {
             ui.showToast("Lỗi chuyển phiên", web3.parseError(err), "error", 4000);
           }

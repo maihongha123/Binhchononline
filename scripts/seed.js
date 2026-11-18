@@ -2,7 +2,7 @@
 // DỰ ÁN BÌNH CHỌN BLOCKCHAIN (DAPP)
 // PHÂN HỆ: KỊCH BẢN NẠP DỮ LIỆU MẪU & KHỞI TẠO BẦU CỬ DEMO (SEED DATA SCRIPT)
 // TÁC GIẢ CHỊU TRÁCH NHIỆM: THÀNH VIÊN 2 (Web3 Middleware & Deployment Engineer)
-// PHASE 2: Viết script seed.js khởi tạo dữ liệu mẫu 3 ứng viên và 4 cử tri
+// PHASE 11: Tích hợp luồng chuyển đổi poll realtime trong main bridge và cập nhật seed script
 // ==============================================================================
 
 const hre = require("hardhat");
@@ -11,7 +11,7 @@ const path = require("path");
 
 async function main() {
   console.log("==================================================");
-  console.log(" [PHASE 2] KHỞI TẠO DỮ LIỆU MẪU TỰ ĐỘNG (SEED DATA SCRIPT) ");
+  console.log(" [PHASE 11] KHỞI TẠO DỮ LIỆU MẪU ĐA CUỘC BÌNH CHỌN (MULTI-POLL SEED) ");
   console.log("==================================================");
 
   // 1. Lấy danh sách tài khoản từ node mạng
@@ -23,44 +23,74 @@ async function main() {
   console.log("2. Danh sách 4 cử tri mẫu:");
   voters.forEach((v, idx) => console.log(`   - Cử tri #${idx + 1}: ${v.address}`));
 
-  // 2. Triển khai hợp đồng mới với tiêu đề cuộc bầu cử
-  const electionTitle = "Bầu Cử Đại Diện Sinh Viên Xuất Sắc 2026";
+  // 2. Triển khai hợp đồng mới với tiêu đề cuộc bầu cử số 1
+  const electionTitle1 = "Bầu Cử Đại Diện Sinh Viên Xuất Sắc 2026";
   const Voting = await hre.ethers.getContractFactory("Voting");
-  const voting = await Voting.deploy(electionTitle);
+  const voting = await Voting.deploy(electionTitle1);
   await voting.waitForDeployment();
   const contractAddress = await voting.getAddress();
 
   console.log("\n-> Hợp đồng đã triển khai tại:", contractAddress);
 
-  // 3. Thêm 3 ứng cử viên mẫu đại diện cho sinh viên
-  console.log("\n-> Đang thêm 3 ứng cử viên mẫu...");
+  // -------------------------------------------------------------
+  // CUỘC BÌNH CHỌN SỐ 1
+  // -------------------------------------------------------------
+  console.log(`\n=== [CUỘC BÌNH CHỌN #1]: "${electionTitle1}" ===`);
+  console.log("-> Đang thêm 3 ứng cử viên mẫu...");
   await (await voting.connect(admin).addCandidate("Nguyễn Văn A (Ủy Viên Ban Chấp Hành)")).wait();
   await (await voting.connect(admin).addCandidate("Trần Thị B (Trưởng Ban Truyền Thông)")).wait();
   await (await voting.connect(admin).addCandidate("Lê Văn C (Đội Trưởng Nghiên Cứu)")).wait();
   console.log("   ✓ Đã thêm 3 ứng cử viên thành công!");
 
-  // 4. Cấp quyền bỏ phiếu (Whitelist) cho 4 cử tri
-  console.log("\n-> Đang cấp quyền bỏ phiếu (Whitelist) cho 4 ví cử tri...");
+  console.log("-> Đang cấp quyền bỏ phiếu (Whitelist) cho 4 ví cử tri...");
   for (const voter of voters) {
     await (await voting.connect(admin).registerVoter(voter.address)).wait();
   }
   console.log("   ✓ Đã cấp quyền bỏ phiếu cho 4 cử tri thành công!");
 
-  // 5. Admin kích hoạt mở hòm phiếu (chuyển sang trạng thái Voting)
-  console.log("\n-> Admin kích hoạt mở hòm phiếu (startVoting)...");
+  console.log("-> Admin kích hoạt mở hòm phiếu Poll #1 (startVoting)...");
   await (await voting.connect(admin).startVoting()).wait();
-  console.log("   ✓ Trạng thái hiện tại: 1 - Đang Bỏ Phiếu (Voting)");
+  console.log("   ✓ Poll #1: 1 - Đang Bỏ Phiếu (Voting)");
 
-  // 6. Mô phỏng 3 cử tri đầu tiên thực hiện bỏ phiếu
-  console.log("\n-> Mô phỏng các cử tri thực hiện bỏ phiếu:");
+  console.log("-> Mô phỏng các cử tri bỏ phiếu tại Poll #1:");
   await (await voting.connect(voters[0]).vote(1)).wait(); // Cử tri 1 bầu Ứng viên 1
-  console.log("   • Cử tri #1 đã bầu cho Ứng viên #1");
-
   await (await voting.connect(voters[1]).vote(1)).wait(); // Cử tri 2 bầu Ứng viên 1
-  console.log("   • Cử tri #2 đã bầu cho Ứng viên #1");
-
   await (await voting.connect(voters[2]).vote(2)).wait(); // Cử tri 3 bầu Ứng viên 2
-  console.log("   • Cử tri #3 đã bầu cho Ứng viên #2");
+  console.log("   ✓ 3 cử tri đã bỏ phiếu xong tại Poll #1.");
+
+  // -------------------------------------------------------------
+  // CUỘC BÌNH CHỌN SỐ 2 (PHASE 11: MULTI-POLL DEMO)
+  // -------------------------------------------------------------
+  const electionTitle2 = "Bình Chọn Đề Tài Khởi Nghiệp Công Nghệ 2026";
+  console.log(`\n=== [CUỘC BÌNH CHỌN #2]: "${electionTitle2}" ===`);
+  await (await voting.connect(admin).createPoll(electionTitle2)).wait();
+  console.log("   ✓ Đã khởi tạo Poll #2 thành công trên cùng Smart Contract!");
+
+  // Chuyển sang Poll #2 để nạp dữ liệu
+  await (await voting.connect(admin).switchPoll(2)).wait();
+  console.log("   ✓ Đã chuyển activePollId sang #2");
+
+  await (await voting.connect(admin).addCandidate("Dự án Nông Nghiệp Thông Minh IoT (Nhóm 1)")).wait();
+  await (await voting.connect(admin).addCandidate("Ứng Dụng Quản Lý Chi Tiêu Sinh Viên AI (Nhóm 2)")).wait();
+  console.log("   ✓ Đã thêm 2 ứng cử viên đề tài cho Poll #2!");
+
+  // Cấp quyền cử tri tại Poll #2
+  await (await voting.connect(admin).registerVoter(voters[0].address)).wait();
+  await (await voting.connect(admin).registerVoter(voters[1].address)).wait();
+  await (await voting.connect(admin).registerVoter(voters[3].address)).wait();
+  console.log("   ✓ Đã cấp quyền cử tri độc lập tại Poll #2!");
+
+  // Mở hòm phiếu Poll #2
+  await (await voting.connect(admin).startVoting()).wait();
+  console.log("   ✓ Poll #2: 1 - Đang Bỏ Phiếu (Voting)");
+
+  // Cử tri 1 bỏ phiếu tại Poll #2
+  await (await voting.connect(voters[0]).vote(1)).wait();
+  console.log("   ✓ Cử tri #1 đã bỏ phiếu tại Poll #2!");
+
+  // Chuyển lại về Poll #1 làm mặc định
+  await (await voting.connect(admin).switchPoll(1)).wait();
+  console.log("   ✓ Đã chuyển lại Poll #1 làm mặc định.");
 
   // 7. Xuất cấu hình tự động sang frontend để đồng bộ ngay
   const configDir = path.join(__dirname, "../frontend");
@@ -86,10 +116,12 @@ async function main() {
   );
 
   console.log("\n==================================================");
-  console.log(" DỮ LIỆU ĐÃ SẴN SÀNG ĐỂ DEMO!");
+  console.log(" DỮ LIỆU ĐÃ SẴN SÀNG ĐỂ DEMO ĐA CUỘC BÌNH CHỌN!");
   console.log(" - Hợp đồng: ", contractAddress);
-  console.log(" - Trạng thái: Voting (Đang mở bình chọn)");
-  console.log(" - Cử tri #4 (", voters[3].address, ") chưa vote -> Dùng tài khoản này demo vote trực tiếp trên trình duyệt!");
+  console.log(" - Tổng số Polls: 2 cuộc bình chọn song song trên 1 contract");
+  console.log("   + Poll #1: Bầu Cử Đại Diện Sinh Viên Xuất Sắc 2026");
+  console.log("   + Poll #2: Bình Chọn Đề Tài Khởi Nghiệp Công Nghệ 2026");
+  console.log(" - Cử tri #4 (", voters[3].address, ") chưa vote ở Poll #1!");
   console.log(" - Đã ghi đè file: frontend/contract-config.json");
   console.log("==================================================");
 }

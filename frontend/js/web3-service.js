@@ -63,6 +63,8 @@ class Web3Service {
       "function pollCount() view returns (uint256)",
       "function activePollId() view returns (uint256)",
       "function getPolls() view returns (tuple(uint256 id, string title, uint8 status, uint256 totalVotes)[])",
+      "function getPollCandidates(uint256 _pollId) view returns (tuple(uint256 id, string name, uint256 voteCount)[])",
+      "function getPollVoter(uint256 _pollId, address _voter) view returns (tuple(bool isRegistered, bool hasVoted, uint256 votedCandidateId))",
       "function createPoll(string _title) returns (uint256)",
       "function switchPoll(uint256 _pollId)",
       "event CandidateAdded(uint256 indexed candidateId, string name)",
@@ -281,7 +283,7 @@ class Web3Service {
         status = Number(statusRaw);
         totalVotes = Number(totalVotesRaw);
 
-        // PHASE 10: Đọc danh sách tất cả các Polls nếu hợp đồng hỗ trợ getPolls
+        // PHASE 10 & 11: Đọc danh sách tất cả các Polls nếu hợp đồng hỗ trợ getPolls
         try {
           if (typeof readContract.getPolls === "function") {
             const rawPolls = await readContract.getPolls();
@@ -297,7 +299,26 @@ class Web3Service {
           }
         } catch (_) {}
 
-        candidates = rawCandidates.map(c => {
+        // PHASE 11: Nếu có danh sách polls, đồng bộ tiêu đề và trạng thái của poll đang chọn
+        if (polls.length > 0) {
+          const currentPoll = polls.find(p => p.id === this.activePollId) || polls[0];
+          title = currentPoll.title;
+          status = currentPoll.status;
+          totalVotes = currentPoll.totalVotes;
+        }
+
+        // PHASE 11: Lấy danh sách ứng viên độc lập của poll được chọn
+        let pollCandList = rawCandidates;
+        try {
+          if (typeof readContract.getPollCandidates === "function" && this.activePollId) {
+            const specificCands = await readContract.getPollCandidates(this.activePollId);
+            if (specificCands && specificCands.length > 0) {
+              pollCandList = specificCands;
+            }
+          }
+        } catch (_) {}
+
+        candidates = pollCandList.map(c => {
           const vCount = Number(c.voteCount);
           if (vCount > highestVote) highestVote = vCount;
           return {
@@ -341,7 +362,18 @@ class Web3Service {
         const readContract = this.getReadContract();
         const code = await readProv.getCode(this.contractAddress);
         if (code && code !== "0x") {
-          const v = await readContract.voters(this.currentAccount);
+          let v = null;
+          // PHASE 11: Truy vấn thông tin cử tri độc lập theo activePollId
+          try {
+            if (typeof readContract.getPollVoter === "function" && this.activePollId) {
+              v = await readContract.getPollVoter(this.activePollId, this.currentAccount);
+            }
+          } catch (_) {}
+
+          if (!v) {
+            v = await readContract.voters(this.currentAccount);
+          }
+
           voterInfo = {
             isRegistered: Boolean(v.isRegistered),
             hasVoted: Boolean(v.hasVoted),
