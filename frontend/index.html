@@ -10,7 +10,7 @@
   <!-- DỰ ÁN BÌNH CHỌN BLOCKCHAIN (DAPP)                                              -->
   <!-- PHÂN HỆ: GIAO DIỆN NGƯỜI DÙNG HTML5 (SEMANTIC STRUCTURE)                       -->
   <!-- TÁC GIẢ CHỊU TRÁCH NHIỆM: THÀNH VIÊN 3 (Frontend UI/UX Developer)              -->
-  <!-- PHASE 1: Thiết kế khung HTML5 ngữ nghĩa cho giao diện DApp bình chọn          -->
+  <!-- PHASE 10: Thiết kế thanh chọn cuộc bình chọn Poll Selector và Modal tạo poll   -->
   <!-- ============================================================================== -->
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,25 +26,54 @@
   <!-- ==================================================================== -->
   <!-- PHASE 8 (Thành viên 3): Modal Xác Nhận Bỏ Phiếu (Confirm Vote Dialog)  -->
   <!-- ==================================================================== -->
-  <div id="confirmModal" class="modal-overlay hidden">
+  <div id="confirmModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
     <div class="modal-card">
-      <div class="modal-icon">🗳️</div>
-      <h3 class="modal-title">Xác Nhận Bỏ Phiếu</h3>
+      <h3 id="confirmModalTitle" class="modal-title">Xác Nhận Bỏ Phiếu</h3>
       <p class="modal-desc">Bạn đang thực hiện bỏ phiếu tín nhiệm cho:</p>
       <div class="modal-candidate-box">
         <span class="modal-cand-badge" id="modalCandBadge">ỨNG CỬ VIÊN #1</span>
         <h4 id="modalCandidateName" class="modal-cand-name">Nguyễn Văn A</h4>
       </div>
       <div class="modal-alert-box">
-        <span class="alert-icon">⚠️</span>
         <div class="alert-text">
-          Giao dịch sẽ được ký bởi ví MetaMask và ghi bất biến lên <strong>Blockchain Ethereum</strong>. Phiếu bầu <strong>không thể thay đổi hoặc hoàn tác</strong>.
+          Lưu ý: Giao dịch sẽ được ký bởi ví MetaMask và ghi nhận bất biến lên Blockchain. Mỗi cử tri chỉ được bỏ phiếu một lần và không thể hoàn tác.
         </div>
       </div>
       <div class="modal-actions">
         <button id="cancelVoteBtn" class="btn btn-ghost">Hủy Bỏ</button>
         <button id="confirmVoteBtn" class="btn btn-primary modal-confirm-btn">
           <span>Ký Xác Nhận Bỏ Phiếu</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- PHASE 10 (Thành viên 3): Modal Tạo Cuộc Bình Chọn Mới (Create Poll)    -->
+  <!-- ==================================================================== -->
+  <div id="createPollModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="createPollModalTitle">
+    <div class="modal-card">
+      <div class="modal-card-header">
+        <h3 id="createPollModalTitle" class="modal-title">Tạo Cuộc Bình Chọn Mới</h3>
+        <button id="closeCreatePollXBtn" class="modal-close-btn" title="Đóng">&times;</button>
+      </div>
+      <p class="modal-desc">Khởi tạo một cuộc bình chọn độc lập mới trên Blockchain. Quyền hạn này dành riêng cho Quản trị viên (Admin).</p>
+      
+      <div class="form-group modal-form-group">
+        <label for="newPollTitleInput">
+          <span>Tên cuộc bình chọn mới</span>
+        </label>
+        <input type="text" id="newPollTitleInput" placeholder="Ví dụ: Bầu cử Ban Chấp Hành Đoàn Khóa 2026..." autocomplete="off">
+      </div>
+
+      <div class="modal-note-box">
+        <p>Sau khi khởi tạo thành công trên Smart Contract, cuộc bình chọn mới sẽ xuất hiện trong danh sách để bạn cấu hình ứng cử viên và danh sách cử tri.</p>
+      </div>
+
+      <div class="modal-actions">
+        <button id="cancelCreatePollBtn" class="btn btn-ghost">Hủy Bỏ</button>
+        <button id="submitCreatePollBtn" class="btn btn-primary modal-confirm-btn">
+          <span>Tạo Cuộc Bình Chọn</span>
         </button>
       </div>
     </div>
@@ -74,29 +103,42 @@
           </button>
 
           <button id="connectWalletBtn" class="btn btn-primary btn-connect">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px">
-              <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/>
-              <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>
-            </svg>
             Kết Nối MetaMask
           </button>
 
           <div id="walletInfo" class="wallet-badge hidden">
             <span class="dot"></span>
             <span id="userAccount" class="user-account" title="Bấm để sao chép địa chỉ ví">0x000...</span>
-            <button id="copyAddressBtn" class="copy-btn" title="Sao chép địa chỉ ví">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-              </svg>
-            </button>
+            <button id="copyAddressBtn" class="copy-btn" title="Sao chép địa chỉ ví">Sao chép</button>
             <span id="userRole" class="role-tag">Khách</span>
           </div>
         </div>
       </div>
     </header>
 
-    <!-- Main Content -->
+    <!-- ==================================================================== -->
+    <!-- PHASE 10 (Thành viên 3): Thanh Chọn Cuộc Bình Chọn (Poll Selector Bar) -->
+    <!-- ==================================================================== -->
+    <section class="poll-selector-bar" id="pollSelectorSection">
+      <div class="poll-selector-card">
+        <div class="poll-selector-left">
+          <label for="pollSelect" class="poll-selector-label">Cuộc Bình Chọn:</label>
+          <div class="poll-select-wrapper">
+            <select id="pollSelect" class="poll-dropdown" aria-label="Chọn cuộc bình chọn">
+              <option value="1">Đang tải danh sách cuộc bình chọn...</option>
+            </select>
+          </div>
+          <span id="activePollBadge" class="poll-status-tag">Phiên #1</span>
+        </div>
+        <div class="poll-selector-right">
+          <button id="openCreatePollModalBtn" class="btn btn-secondary btn-sm" title="Tạo cuộc bình chọn mới">
+            + Tạo Bình Chọn Mới
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content Grid -->
     <main class="content-grid">
       <!-- Cột Trái: Trạng thái & Bảng điều khiển Admin -->
       <aside class="sidebar">
@@ -185,10 +227,9 @@
         <section class="card admin-card" id="adminCardSection">
           <div class="card-header">
             <div class="admin-header-title">
-              <span class="admin-icon">⚙️</span>
               <div>
-                <h3>Bảng Điều Khiển Admin</h3>
-                <span class="subtext">Quản trị Smart Contract</span>
+                <h3>Bảng Quản Trị Hệ Thống</h3>
+                <span class="subtext">Điều hành phiên Smart Contract</span>
               </div>
             </div>
             <span class="admin-permission-tag" id="adminPermissionTag">Chỉ Admin</span>
@@ -198,7 +239,7 @@
             <div class="form-group">
               <label for="candidateNameInput">
                 <span>Thêm Ứng Cử Viên Mới</span>
-                <span class="form-hint">(Chỉ ở vòng Đăng ký)</span>
+                <span class="form-hint">(Giai đoạn Đăng ký)</span>
               </label>
               <div class="input-with-button">
                 <input type="text" id="candidateNameInput" placeholder="Nhập họ và tên ứng viên..." autocomplete="off">
@@ -211,7 +252,7 @@
             <div class="form-group">
               <label for="voterAddressInput">
                 <span>Cấp Quyền Cử Tri (Whitelist)</span>
-                <span class="form-hint">(Chỉ ở vòng Đăng ký)</span>
+                <span class="form-hint">(Giai đoạn Đăng ký)</span>
               </label>
               <div class="input-with-button">
                 <input type="text" id="voterAddressInput" placeholder="Địa chỉ ví 0x..." autocomplete="off">
@@ -223,16 +264,10 @@
 
             <div class="admin-actions">
               <button id="startVotingBtn" class="btn btn-success full-width">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:6px">
-                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                </svg>
-                Bắt Đầu Bỏ Phiếu
+                Mở Cổng Bỏ Phiếu
               </button>
               <button id="endVotingBtn" class="btn btn-danger full-width">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:6px">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                </svg>
-                Kết Thúc Bầu Cử
+                Khóa & Kết Thúc Bầu Cử
               </button>
             </div>
           </div>
@@ -244,7 +279,6 @@
         <!-- Thông báo người thắng khi kết thúc (Winner Spotlight / Podium) -->
         <div id="winnerBanner" class="winner-banner hidden">
           <div class="trophy-glow"></div>
-          <div class="trophy-icon">🏆</div>
           <div class="winner-info">
             <div class="winner-tag">KẾT QUẢ CHUNG CUỘC - QUÁN QUÂN BÌNH CHỌN</div>
             <h3 id="winnerText" class="winner-name">Đang tổng hợp kết quả...</h3>
@@ -255,7 +289,6 @@
 
         <!-- Trạng thái của cử tri đang kết nối -->
         <div id="voterStatusNotice" class="notice-bar">
-          <span class="notice-icon">ℹ️</span>
           <span class="notice-text">Vui lòng kết nối ví MetaMask để tham gia bình chọn và xác thực quyền hạn.</span>
         </div>
 
@@ -272,7 +305,7 @@
         </div>
 
         <div id="candidateList" class="candidates-grid">
-          <!-- Render danh sách động từ app.js -->
+          <!-- Render danh sách động từ UIController -->
           <div class="empty-state">
             <div class="spinner"></div>
             <p>Đang tải dữ liệu từ Blockchain...</p>
@@ -284,8 +317,8 @@
     <!-- Footer -->
     <footer class="main-footer">
       <div class="footer-content">
-        <p><strong>Đồ Án Môn Học:</strong> Hệ Thống Bình Chọn Trực Tuyến Phi Tập Trung (DApp)</p>
-        <p class="footer-sub">Nền tảng: Ethereum Localnet • Smart Contract: Solidity • Tầng Web3: Ethers.js v6 • Giao diện: HTML5/CSS3 Responsive</p>
+        <p><strong>Đồ Án Môn Học:</strong> Hệ Thống Bình Chọn Trực Tuyến Phi Tập Trung (DApp Multi-Poll)</p>
+        <p class="footer-sub">Nền tảng: Ethereum Sepolia / Localhost • Smart Contract: Solidity • Tầng Web3: Ethers.js v6 • Giao diện: HTML5/CSS3 Responsive</p>
         <p class="footer-credit">Phân công nhiệm vụ: Thành viên 1 (Smart Contract) | Thành viên 2 (Web3 Middleware) | Thành viên 3 (Frontend UI/UX)</p>
       </div>
     </footer>

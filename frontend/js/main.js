@@ -2,7 +2,7 @@
 // DỰ ÁN BÌNH CHỌN BLOCKCHAIN (DAPP)
 // PHÂN HỆ: ĐIỀU PHỐI TÍCH HỢP HỆ THỐNG (SYSTEM ORCHESTRATION BRIDGE)
 // TÁC GIẢ CHỊU TRÁCH NHIỆM: THÀNH VIÊN 2 (Web3 Middleware & Deployment Engineer)
-// PHASE 9: Cập nhật địa chỉ hợp đồng từ Remix Sepolia và tích hợp main bridge
+// PHASE 10: Tích hợp thanh chọn đa cuộc bình chọn Multi-Poll và Modal tạo Poll
 // KẾT NỐI: WEB3 SERVICE (THÀNH VIÊN 2) <---> UI CONTROLLER (THÀNH VIÊN 3)
 // ==============================================================================
 
@@ -38,6 +38,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       ui.updateVoterProfileCard(data.currentAccount, data.voterInfo, data.isAdmin, data.status);
       ui.updateAdminControls(data.status, data.isAdmin);
       ui.renderWinnerBanner(data.winner, data.totalVotes);
+
+      // PHASE 10: Render thanh chọn cuộc bình chọn (Multi-Poll Selector)
+      if (data.polls && ui.renderPollSelector) {
+        ui.renderPollSelector(data.polls, data.activePollId, async (newPollId) => {
+          ui.showToast("Chuyển cuộc bình chọn", `Đang nạp dữ liệu cuộc bình chọn #${newPollId}...`, "info", 1500);
+          try {
+            await web3.switchActivePoll(newPollId);
+            await refreshData(true);
+          } catch (err) {
+            ui.showToast("Lỗi chuyển phiên", web3.parseError(err), "error", 4000);
+          }
+        });
+      }
 
       // Render danh sách ứng cử viên kèm bộ gắn sự kiện bỏ phiếu
       ui.renderCandidates(
@@ -82,6 +95,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (newStatus === 1) stName = "BẮT ĐẦU BỎ PHIẾU!";
         else if (newStatus === 2) stName = "ĐÃ KẾT THÚC BẦU CỬ!";
         ui.showToast("Chuyển Giai Đoạn", `Cuộc bầu cử đã chuyển sang trạng thái: ${stName}`, "warning", 5000);
+        refreshData(true);
+      },
+      onPollCreated: (pollId, title) => {
+        ui.showToast("Cuộc Bình Chọn Mới", `Cuộc bình chọn mới #${pollId}: "${title}" vừa được khởi tạo!`, "info", 5000);
         refreshData(true);
       }
     });
@@ -206,6 +223,49 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  // PHASE 10: Xử lý Modal Tạo Cuộc Bình Chọn Mới (Create Poll Modal)
+  if (ui.dom.openCreatePollModalBtn) {
+    ui.dom.openCreatePollModalBtn.addEventListener("click", () => {
+      if (!web3.checkIsAdmin()) {
+        ui.showToast("Từ chối quyền", "Chỉ Quản trị viên (Admin) mới có quyền tạo cuộc bình chọn mới!", "warning", 3500);
+        return;
+      }
+      ui.openCreatePollModal();
+    });
+  }
+
+  if (ui.dom.closeCreatePollXBtn) {
+    ui.dom.closeCreatePollXBtn.addEventListener("click", () => ui.closeCreatePollModal());
+  }
+
+  if (ui.dom.cancelCreatePollBtn) {
+    ui.dom.cancelCreatePollBtn.addEventListener("click", () => ui.closeCreatePollModal());
+  }
+
+  if (ui.dom.submitCreatePollBtn) {
+    ui.dom.submitCreatePollBtn.addEventListener("click", async () => {
+      const title = ui.dom.newPollTitleInput.value.trim();
+      if (!title) {
+        ui.showToast("Thiếu thông tin", "Vui lòng nhập tên cuộc bình chọn!", "warning", 3000);
+        return;
+      }
+      ui.dom.submitCreatePollBtn.disabled = true;
+      const toastId = ui.showToast("Đang tạo bình chọn", `Đang gửi giao dịch tạo "${title}" lên Blockchain...`, "loading", 0);
+      try {
+        await web3.createPoll(title);
+        ui.removeToast(toastId);
+        ui.closeCreatePollModal();
+        ui.showToast("Tạo thành công", `Cuộc bình chọn "${title}" đã được khởi tạo trên Smart Contract!`, "success", 4500);
+        await refreshData(true);
+      } catch (err) {
+        ui.removeToast(toastId);
+        ui.showToast("Tạo thất bại", web3.parseError(err), "error", 5000);
+      } finally {
+        ui.dom.submitCreatePollBtn.disabled = false;
+      }
+    });
+  }
+
   // 8. Các tiện ích phụ trợ (Copy địa chỉ ví, Làm mới dữ liệu)
   const copyAddressHandler = () => {
     if (!web3.currentAccount) return;
@@ -244,4 +304,3 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.log("[AutoConnect] Không có phiên đăng nhập cũ.");
   }
 });
-

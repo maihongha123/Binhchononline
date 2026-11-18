@@ -2,7 +2,7 @@
 // DỰ ÁN BÌNH CHỌN BLOCKCHAIN (DAPP)
 // PHÂN HỆ: GIAO DIỆN NGƯỜI DÙNG & TƯƠNG TÁC (UI/UX)
 // TÁC GIẢ CHỊU TRÁCH NHIỆM: THÀNH VIÊN 3 (Frontend UI/UX Developer)
-// PHASE 5: Tách module ui-controller.js quản lý DOM và render ứng cử viên
+// PHASE 10: Thiết kế thanh chọn cuộc bình chọn Poll Selector và Modal tạo poll
 // ==============================================================================
 
 class UIController {
@@ -11,6 +11,8 @@ class UIController {
     this.dom = {};
     this.pendingVoteId = null;
     this.pendingVoteName = null;
+    this._pollChangeAttached = false;
+    this._onPollChangeCallback = null;
   }
 
   /**
@@ -18,13 +20,25 @@ class UIController {
    */
   initDOM() {
     this.dom = {
-      // Toast & Modal
+      // Toast & Modals
       toastContainer: document.getElementById("toastContainer"),
       confirmModal: document.getElementById("confirmModal"),
       modalCandBadge: document.getElementById("modalCandBadge"),
       modalCandidateName: document.getElementById("modalCandidateName"),
       cancelVoteBtn: document.getElementById("cancelVoteBtn"),
       confirmVoteBtn: document.getElementById("confirmVoteBtn"),
+
+      // PHASE 10: Multi-Poll Selector & Create Poll Modal
+      pollSelectorSection: document.getElementById("pollSelectorSection"),
+      pollSelect: document.getElementById("pollSelect"),
+      activePollBadge: document.getElementById("activePollBadge"),
+      openCreatePollModalBtn: document.getElementById("openCreatePollModalBtn"),
+      createPollModal: document.getElementById("createPollModal"),
+      createPollModalTitle: document.getElementById("createPollModalTitle"),
+      closeCreatePollXBtn: document.getElementById("closeCreatePollXBtn"),
+      newPollTitleInput: document.getElementById("newPollTitleInput"),
+      cancelCreatePollBtn: document.getElementById("cancelCreatePollBtn"),
+      submitCreatePollBtn: document.getElementById("submitCreatePollBtn"),
 
       // Header & Wallet
       networkBadge: document.getElementById("networkBadge"),
@@ -73,7 +87,7 @@ class UIController {
   }
 
   // ============================================================================
-  // PHASE 7 (Thành viên 3): HỆ THỐNG TOAST NOTIFICATION 5 TRẠNG THÁI THAY THẾ ALERT
+  // HỆ THỐNG TOAST THÔNG BÁO TINH GỌN (HẠN CHẾ ICON, RÕ NGHĨA TRỰC QUAN)
   // ============================================================================
   showToast(title, message, type = "info", duration = 4000) {
     if (!this.dom.toastContainer) return null;
@@ -83,16 +97,14 @@ class UIController {
     toast.className = `toast toast-${type}`;
     toast.id = toastId;
 
-    let icon = "ℹ️";
-    if (type === "success") icon = "✅";
-    else if (type === "error") icon = "❌";
-    else if (type === "warning") icon = "⚠️";
-    else if (type === "loading") icon = `<div class="toast-spinner"></div>`;
+    const tagText = type.toUpperCase();
 
     toast.innerHTML = `
-      <div class="toast-icon">${icon}</div>
       <div class="toast-content">
-        <div class="toast-title">${title}</div>
+        <div class="toast-title">
+          <span class="toast-badge-tag">${tagText}</span>
+          <span>${title}</span>
+        </div>
         <div class="toast-msg">${message}</div>
       </div>
       <button class="toast-close" title="Đóng">&times;</button>
@@ -128,7 +140,73 @@ class UIController {
   }
 
   // ============================================================================
-  // PHASE 8 (Thành viên 3): HỘP THOẠI MODAL XÁC NHẬN BỎ PHIẾU CHỐNG THAO TÁC NHẦM
+  // PHASE 10 (Thành viên 3): RENDER THANH CHỌN CUỘC BÌNH CHỌN (MULTI-POLL SELECTOR)
+  // ============================================================================
+  renderPollSelector(polls, activePollId, onPollChange) {
+    if (!this.dom.pollSelect) return;
+    this.dom.pollSelect.innerHTML = "";
+
+    if (!polls || polls.length === 0) {
+      const opt = document.createElement("option");
+      opt.value = "1";
+      opt.textContent = "#1 - Cuộc bình chọn mặc định";
+      this.dom.pollSelect.appendChild(opt);
+      return;
+    }
+
+    polls.forEach(poll => {
+      const opt = document.createElement("option");
+      opt.value = poll.id;
+      let statusLabel = "";
+      if (poll.status === 0) statusLabel = " [Đăng ký]";
+      else if (poll.status === 1) statusLabel = " [Đang bầu]";
+      else if (poll.status === 2) statusLabel = " [Đã kết thúc]";
+
+      opt.textContent = `#${poll.id} - ${poll.title}${statusLabel}`;
+      if (Number(poll.id) === Number(activePollId)) {
+        opt.selected = true;
+      }
+      this.dom.pollSelect.appendChild(opt);
+    });
+
+    if (this.dom.activePollBadge) {
+      this.dom.activePollBadge.textContent = `Phiên #${activePollId}`;
+    }
+
+    // Đảm bảo gắn lắng nghe sự kiện chuyển đổi poll một lần duy nhất
+    if (!this._pollChangeAttached) {
+      this._pollChangeAttached = true;
+      this.dom.pollSelect.addEventListener("change", (e) => {
+        const selectedId = Number(e.target.value);
+        if (this._onPollChangeCallback) {
+          this._onPollChangeCallback(selectedId);
+        }
+      });
+    }
+    this._onPollChangeCallback = onPollChange;
+  }
+
+  // ============================================================================
+  // PHASE 10 (Thành viên 3): MODAL TẠO CUỘC BÌNH CHỌN MỚI
+  // ============================================================================
+  openCreatePollModal() {
+    if (!this.dom.createPollModal) return;
+    if (this.dom.newPollTitleInput) {
+      this.dom.newPollTitleInput.value = "";
+    }
+    this.dom.createPollModal.classList.remove("hidden");
+    if (this.dom.newPollTitleInput) {
+      this.dom.newPollTitleInput.focus();
+    }
+  }
+
+  closeCreatePollModal() {
+    if (!this.dom.createPollModal) return;
+    this.dom.createPollModal.classList.add("hidden");
+  }
+
+  // ============================================================================
+  // PHASE 8 (Thành viên 3): HỘP THOẠI MODAL XÁC NHẬN BỎ PHIẾU
   // ============================================================================
   openVoteModal(candidateId, candidateName, onConfirmCallback) {
     this.pendingVoteId = candidateId;
@@ -138,14 +216,12 @@ class UIController {
     this.dom.modalCandidateName.textContent = candidateName;
     this.dom.confirmModal.classList.remove("hidden");
 
-    // Gắn sự kiện xác nhận duy nhất 1 lần
     const confirmHandler = async () => {
       this.dom.confirmVoteBtn.removeEventListener("click", confirmHandler);
       this.closeVoteModal();
       if (onConfirmCallback) await onConfirmCallback(candidateId, candidateName);
     };
 
-    // Xóa listener cũ tránh kích hoạt lặp
     const newBtn = this.dom.confirmVoteBtn.cloneNode(true);
     this.dom.confirmVoteBtn.parentNode.replaceChild(newBtn, this.dom.confirmVoteBtn);
     this.dom.confirmVoteBtn = newBtn;
@@ -180,14 +256,14 @@ class UIController {
     if (isAdmin) {
       this.dom.userRoleSpan.textContent = "Admin";
       this.dom.userRoleSpan.style.backgroundColor = "#e11d48";
-      this.dom.adminPermissionTag.textContent = "Bạn là Admin ✅";
+      this.dom.adminPermissionTag.textContent = "Quản trị viên (Admin)";
       this.dom.adminPermissionTag.style.borderColor = "#10b981";
       this.dom.adminPermissionTag.style.color = "#34d399";
       this.dom.adminPermissionTag.style.background = "rgba(16, 185, 129, 0.15)";
     } else {
       this.dom.userRoleSpan.textContent = "Cử tri";
       this.dom.userRoleSpan.style.backgroundColor = "#2563eb";
-      this.dom.adminPermissionTag.textContent = "Chỉ Admin (Xem) 🔒";
+      this.dom.adminPermissionTag.textContent = "Chỉ xem (Cử tri)";
       this.dom.adminPermissionTag.style.borderColor = "";
       this.dom.adminPermissionTag.style.color = "";
       this.dom.adminPermissionTag.style.background = "";
@@ -235,11 +311,10 @@ class UIController {
   updateVoterProfileCard(account, voterInfo, isAdmin, status) {
     if (!account) {
       this.dom.voterCardAddress.textContent = "Chưa kết nối ví";
-      this.dom.voterCardRegistration.innerHTML = `<span class="badge-pill badge-neutral">Chưa rõ</span>`;
-      this.dom.voterCardVoteStatus.innerHTML = `<span class="badge-pill badge-neutral">Chưa rõ</span>`;
+      this.dom.voterCardRegistration.innerHTML = `<span class="badge-pill badge-neutral">Chưa kiểm tra</span>`;
+      this.dom.voterCardVoteStatus.innerHTML = `<span class="badge-pill badge-neutral">Chưa kiểm tra</span>`;
       this.dom.voterStatusNotice.innerHTML = `
-        <span class="notice-icon">ℹ️</span>
-        <span class="notice-text">Vui lòng kết nối ví MetaMask để tham gia bình chọn và xác thực quyền hạn.</span>
+        <span class="notice-text">Vui lòng kết nối ví MetaMask để tham gia bình chọn và xác thực quyền hạn trên Blockchain.</span>
       `;
       return;
     }
@@ -251,16 +326,16 @@ class UIController {
     if (isAdmin) {
       this.dom.voterCardRegistration.innerHTML = `<span class="badge-pill badge-neutral">Quản trị viên (Admin)</span>`;
     } else if (voterInfo.isRegistered) {
-      this.dom.voterCardRegistration.innerHTML = `<span class="badge-pill badge-success">Đã Cấp Quyền ✅</span>`;
+      this.dom.voterCardRegistration.innerHTML = `<span class="badge-pill badge-success">Đã Cấp Quyền</span>`;
     } else {
-      this.dom.voterCardRegistration.innerHTML = `<span class="badge-pill badge-danger">Chưa Cấp Quyền ❌</span>`;
+      this.dom.voterCardRegistration.innerHTML = `<span class="badge-pill badge-danger">Chưa Cấp Quyền</span>`;
     }
 
     // Trạng thái bỏ phiếu
     if (voterInfo.hasVoted) {
-      this.dom.voterCardVoteStatus.innerHTML = `<span class="badge-pill badge-success">Đã Bầu (Ứng viên #${voterInfo.votedCandidateId}) 🎉</span>`;
+      this.dom.voterCardVoteStatus.innerHTML = `<span class="badge-pill badge-success">Đã Bầu (Ứng viên #${voterInfo.votedCandidateId})</span>`;
     } else if (status === 1 && voterInfo.isRegistered) {
-      this.dom.voterCardVoteStatus.innerHTML = `<span class="badge-pill badge-neutral" style="color:#60a5fa;border:1px solid #3b82f6;">Chưa Bỏ Phiếu 🗳️</span>`;
+      this.dom.voterCardVoteStatus.innerHTML = `<span class="badge-pill badge-warning">Chưa Bỏ Phiếu</span>`;
     } else {
       this.dom.voterCardVoteStatus.innerHTML = `<span class="badge-pill badge-neutral">Chưa Bỏ Phiếu</span>`;
     }
@@ -268,39 +343,33 @@ class UIController {
     // Thanh thông báo vai trò
     if (isAdmin) {
       this.dom.voterStatusNotice.innerHTML = `
-        <span class="notice-icon">⭐</span>
-        <span class="notice-text">Bạn đang đăng nhập với tư cách <strong>Quản trị viên (Admin)</strong>. Bạn có toàn quyền thiết lập ứng viên, cấp quyền cử tri và điều hành kỳ bầu cử.</span>
+        <span class="notice-text">Bạn đang đăng nhập với tư cách <strong>Quản trị viên (Admin)</strong>. Bạn có quyền tạo cuộc bình chọn mới, quản lý ứng cử viên và điều phối trạng thái kỳ bầu cử.</span>
       `;
     } else if (!voterInfo.isRegistered) {
       this.dom.voterStatusNotice.innerHTML = `
-        <span class="notice-icon">⚠️</span>
-        <span class="notice-text">Địa chỉ ví của bạn <strong>chưa được cấp quyền</strong>. Vui lòng liên hệ Admin để thêm địa chỉ ví của bạn vào Whitelist.</span>
+        <span class="notice-text">Địa chỉ ví của bạn <strong>chưa được cấp quyền</strong> cho cuộc bình chọn này. Vui lòng liên hệ Admin để thêm địa chỉ ví của bạn vào danh sách cấp quyền.</span>
       `;
     } else if (voterInfo.hasVoted) {
       this.dom.voterStatusNotice.innerHTML = `
-        <span class="notice-icon">✅</span>
         <span class="notice-text">Bạn đã thực hiện quyền cử tri thành công! Phiếu bầu của bạn cho Ứng viên #${voterInfo.votedCandidateId} đã được ghi nhận bất biến trên Blockchain.</span>
       `;
     } else if (status === 1) {
       this.dom.voterStatusNotice.innerHTML = `
-        <span class="notice-icon">🗳️</span>
-        <span class="notice-text">Hòm phiếu đang <strong>mở</strong> và bạn <strong>được phép bỏ phiếu</strong>! Hãy chọn ứng viên mong muốn bên dưới và bấm nút Bầu Chọn.</span>
+        <span class="notice-text">Hòm phiếu đang <strong>mở</strong> và bạn <strong>được phép bỏ phiếu</strong>. Hãy chọn ứng viên mong muốn bên dưới và bấm nút Bầu Chọn.</span>
       `;
     } else if (status === 0) {
       this.dom.voterStatusNotice.innerHTML = `
-        <span class="notice-icon">⏳</span>
-        <span class="notice-text">Bạn đã được cấp quyền, nhưng cuộc bình chọn <strong>chưa bắt đầu</strong>. Vui lòng chờ Admin mở hòm phiếu.</span>
+        <span class="notice-text">Bạn đã được cấp quyền, nhưng cuộc bình chọn <strong>chưa bắt đầu</strong>. Vui lòng chờ Quản trị viên mở hòm phiếu.</span>
       `;
     } else {
       this.dom.voterStatusNotice.innerHTML = `
-        <span class="notice-icon">🔒</span>
         <span class="notice-text">Cuộc bình chọn đã kết thúc. Cảm ơn bạn đã tham gia quan sát và theo dõi kết quả bầu cử!</span>
       `;
     }
   }
 
   // ============================================================================
-  // PHASE 6 (Thành viên 3): RENDER DANH SÁCH ỨNG CỬ VIÊN VỚI THANH TIẾN ĐỘ % DYNAMIC & HIGHLIGHT
+  // RENDER DANH SÁCH ỨNG CỬ VIÊN VỚI THANH TIẾN ĐỘ % DYNAMIC & HIGHLIGHT
   // ============================================================================
   renderCandidates(candidates, status, totalVotes, highestVote, voterInfo, onVoteButtonClick) {
     this.dom.candidateList.innerHTML = "";
@@ -308,7 +377,7 @@ class UIController {
     if (!candidates || candidates.length === 0) {
       this.dom.candidateList.innerHTML = `
         <div class="empty-state">
-          <p>Chưa có ứng cử viên nào được ghi danh trên Blockchain.</p>
+          <p>Chưa có ứng cử viên nào được ghi danh trong cuộc bình chọn này.</p>
         </div>
       `;
       return;
@@ -335,7 +404,7 @@ class UIController {
           buttonText = "Chưa Được Cấp Quyền";
         } else if (voterInfo.hasVoted) {
           buttonDisabled = true;
-          buttonText = voterInfo.votedCandidateId === cand.id ? "Bạn Đã Bầu ✅" : "Đã Bỏ Phiếu";
+          buttonText = voterInfo.votedCandidateId === cand.id ? "Đã Bỏ Phiếu (Ứng Viên Này)" : "Đã Bỏ Phiếu";
         }
       } else if (status === 2) {
         buttonDisabled = true;
@@ -387,7 +456,6 @@ class UIController {
   // CẬP NHẬT CÁC NÚT ĐIỀU HÀNH ADMIN
   // ============================================================================
   updateAdminControls(status, isAdmin) {
-    // Chỉ Admin mới được tương tác, hoặc vô hiệu hóa theo pha
     const canRegister = isAdmin && status === 0;
     const canStart = isAdmin && status === 0;
     const canEnd = isAdmin && status === 1;
@@ -399,10 +467,18 @@ class UIController {
 
     this.dom.startVotingBtn.disabled = !canStart;
     this.dom.endVotingBtn.disabled = !canEnd;
+
+    // Cập nhật nút tạo poll mới
+    if (this.dom.openCreatePollModalBtn) {
+      this.dom.openCreatePollModalBtn.disabled = !isAdmin;
+      this.dom.openCreatePollModalBtn.title = isAdmin 
+        ? "Tạo cuộc bình chọn mới trên Smart Contract" 
+        : "Chỉ Quản trị viên (Admin) mới có quyền tạo cuộc bình chọn mới";
+    }
   }
 
   // ============================================================================
-  // PHASE 9 (Thành viên 3): BẢNG VINH DANH NGƯỜI THẮNG CUỘC (WINNER SPOTLIGHT PODIUM)
+  // BẢNG VINH DANH NGƯỜI THẮNG CUỘC (WINNER SPOTLIGHT)
   // ============================================================================
   renderWinnerBanner(winner, totalVotes) {
     if (winner && winner.name) {
@@ -410,7 +486,7 @@ class UIController {
       const winPercent = totalVotes > 0 ? ((winVotes / totalVotes) * 100).toFixed(1) : 0;
       this.dom.winnerBanner.classList.remove("hidden");
       this.dom.winnerText.textContent = winner.name;
-      this.dom.winnerStats.textContent = `Dẫn đầu áp đảo với ${winVotes}/${totalVotes} phiếu bầu (${winPercent}%)`;
+      this.dom.winnerStats.textContent = `Dẫn đầu chung cuộc với ${winVotes}/${totalVotes} phiếu bầu (${winPercent}%)`;
     } else {
       this.dom.winnerBanner.classList.add("hidden");
     }
@@ -419,4 +495,3 @@ class UIController {
 
 // Khởi tạo đối tượng toàn cục duy nhất
 window.UIController = new UIController();
-
