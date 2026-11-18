@@ -1,7 +1,7 @@
 # Kế Hoạch Dự Án: Hệ Thống Bình Chọn Trực Tuyến Blockchain (BINHCHONONLINE)
 
 ## 1. MỤC TIÊU DỰ ÁN (GOAL)
-Xây dựng, hoàn thiện, kiểm thử và triển khai toàn diện hệ thống DApp bình chọn trực tuyến trên nền tảng Blockchain Ethereum (Solidity, Sepolia Testnet, Remix IDE, Ethers.js v6, Vercel) với cấu trúc phân quyền file độc lập cho 3 thành viên, lịch sử Git chuẩn mực (**mỗi thành viên đúng 9 commits chất lượng cao = 27 commits tổng**), sẵn sàng cho buổi báo cáo và bảo vệ đồ án đạt điểm tối đa.
+Xây dựng, hoàn thiện, kiểm thử và triển khai toàn diện hệ thống DApp bình chọn trực tuyến trên nền tảng Blockchain Ethereum (Solidity, Sepolia Testnet, Remix IDE, Ethers.js v6, GitHub Pages). Dự án phát triển qua **11 Phases hoàn chỉnh** với cấu trúc phân quyền file độc lập cho 3 thành viên, lịch sử Git chuẩn mực (**mỗi thành viên đúng 11 commits chất lượng cao = 33 commits tổng**), hỗ trợ **Đa cuộc bình chọn (Multi-Poll trên 1 Smart Contract)** và **Giao diện Modern Clean Light Theme (Tone Trắng - Xanh Dương)**, sẵn sàng cho buổi báo cáo và bảo vệ đồ án đạt điểm tối đa.
 
 ---
 
@@ -16,7 +16,7 @@ Xây dựng, hoàn thiện, kiểm thử và triển khai toàn diện hệ th�
 
 ---
 
-## 3. LỘ TRÌNH 9 PHASES LIÊN HOÀN CHO 3 THÀNH VIÊN
+## 3. LỘ TRÌNH 11 PHASES LIÊN HOÀN CHO 3 THÀNH VIÊN
 *(Mỗi Phase quy định rõ: Ai làm việc gì, sửa file nào, và câu lệnh Git Commit cụ thể ngay sau khi hoàn thành)*
 
 ```
@@ -29,6 +29,8 @@ Xây dựng, hoàn thiện, kiểm thử và triển khai toàn diện hệ th�
 [Phase 7: Tính Winner & Toasts] ─────► TV1 commit | TV2 commit | TV3 commit
 [Phase 8: Unit Tests & Modal Confirm]► TV1 commit | TV2 commit | TV3 commit
 [Phase 9: Deploy Remix & Spotlight] ─► TV1 commit | TV2 commit | TV3 commit
+[Phase 10: Kiến Trúc Đa Cuộc Bình Chọn] TV1 commit | TV2 commit | TV3 commit
+[Phase 11: Light Theme Trắng - Xanh]  TV1 commit | TV2 commit | TV3 commit
 ```
 
 ---
@@ -321,7 +323,75 @@ Xây dựng, hoàn thiện, kiểm thử và triển khai toàn diện hệ th�
 
 ---
 
-## 4. TỔNG KẾT BẢNG THỐNG KÊ 27 COMMITS CHO TOÀN BỘ DỰ ÁN
+### PHASE 10: KIẾN TRÚC ĐA CUỘC BÌNH CHỌN (MULTI-POLL ARCHITECTURE)
+* **Mục tiêu:** Mở rộng Smart Contract và Web3 Middleware cho phép tạo và quản lý nhiều cuộc bầu cử độc lập trên cùng 1 hợp đồng.
+
+* **Thành viên 1:**
+  - *Công việc:* Khai báo `struct PollInfo`, `mapping(uint256 => PollInfo) public polls`, `pollCount`, hàm `createPoll(string memory _title)` cho Admin, hàm `getPolls()` lấy danh sách cuộc bầu cử. Viết thêm các unit test cases kiểm thử tạo nhiều poll và bỏ phiếu độc lập giữa các poll (Tổng nâng lên $\ge 38$ Unit Tests).
+  - *Tệp tác động:* `contracts/Voting.sol`, `test/Voting.test.js`
+  - *Lệnh commit sau khi xong:*
+    ```bash
+    git add contracts/Voting.sol test/Voting.test.js
+    git commit -m "feat(contract): Cài đặt cơ chế Multi-Poll cho phép tạo nhiều cuộc bình chọn trên 1 contract"
+    ```
+
+* **Thành viên 2:**
+  - *Công việc:* Cập nhật `Web3Service` thêm các phương thức: `createPoll(title)`, `getAllPolls()`, `switchActivePoll(pollId)`, và bổ sung trình lắng nghe sự kiện On-Chain `event PollCreated(uint256 indexed pollId, string title)` để tự động cập nhật danh sách cuộc bầu cử.
+  - *Tệp tác động:* `frontend/js/web3-service.js`
+  - *Lệnh commit sau khi xong:*
+    ```bash
+    git add frontend/js/web3-service.js
+    git commit -m "feat(web3): Triển khai middleware quản lý đa cuộc bình chọn createPoll và switchActivePoll"
+    ```
+
+* **Thành viên 3:**
+  - *Công việc:* Thiết kế thanh chọn cuộc bầu cử (`Poll Selector Bar / Dropdown`) ở góc trên màn hình và Hộp thoại Modal **"Tạo Cuộc Bình Chọn Mới"** (`Create Poll Dialog`) cho Admin nhập tên cuộc bầu cử mới.
+  - *Tệp tác động:* `frontend/index.html`, `frontend/js/ui-controller.js`
+  - *Lệnh commit sau khi xong:*
+    ```bash
+    git add frontend/index.html frontend/js/ui-controller.js
+    git commit -m "feat(ui): Thiết kế thanh chọn cuộc bình chọn Poll Selector và Modal tạo poll mới"
+    ```
+
+---
+
+### PHASE 11: TÁI THIẾT KẾ LIGHT THEME TONE TRẮNG - XANH & TỔNG LỰC TÍCH HỢP
+* **Mục tiêu:** Thay đổi toàn diện phong cách giao diện sang Tone Trắng - Xanh Dương hiện đại, thanh lịch, kết nối mượt mà luồng chuyển đổi giữa các cuộc bầu cử.
+
+* **Thành viên 1:**
+  - *Công việc:* Rà soát và hoàn thiện kiểm soát bảo mật cho Multi-Poll (ràng buộc tên poll không rỗng, giới hạn số poll, chống rò rỉ dữ liệu giữa các poll), đảm bảo toàn bộ bộ kiểm thử tự động pass 100%.
+  - *Tệp tác động:* `contracts/Voting.sol`, `test/Voting.test.js`
+  - *Lệnh commit sau khi xong:*
+    ```bash
+    git add contracts/Voting.sol test/Voting.test.js
+    git commit -m "refactor(contract): Hoàn thiện kiểm soát bảo mật và đồng bộ ABI cho hệ thống Multi-Poll"
+    ```
+
+* **Thành viên 2:**
+  - *Công việc:* Cập nhật file điều phối `frontend/js/main.js`: Khi người dùng chọn một cuộc bình chọn khác trên Dropdown, tự động làm mới ứng cử viên, tiến độ và trạng thái của cuộc bầu cử đó trong 0.5s mà không cần tải lại trang. Cập nhật `scripts/seed.js` tạo sẵn 2 cuộc bầu cử mẫu.
+  - *Tệp tác động:* `frontend/js/main.js`, `scripts/seed.js`
+  - *Lệnh commit sau khi xong:*
+    ```bash
+    git add frontend/js/main.js scripts/seed.js
+    git commit -m "feat(web3): Tích hợp luồng chuyển đổi poll realtime trong main bridge và cập nhật seed script"
+    ```
+
+* **Thành viên 3:**
+  - *Công việc:* Thiết kế lại toàn bộ `style.css` sang **Modern Clean Light Theme (Tone Trắng - Xanh Dương)**:
+    - Nền trắng dịu mắt (`#f8fafc`), thẻ card trắng tinh khôi (`#ffffff`) với bóng đổ mềm hiện đại.
+    - Điểm nhấn Xanh Dương Hoàng Gia (Royal Blue `#2563eb`), Xanh Biển Tươi (Sky Blue `#0ea5e9`).
+    - Chữ xám than đậm (`#0f172a`, `#334155`) tương phản cao, dễ đọc.
+    - Thẻ ứng viên, Timeline, Modal, Toast đều được làm mới theo tone Trắng - Xanh.
+  - *Tệp tác động:* `frontend/style.css`, `frontend/js/ui-controller.js`
+  - *Lệnh commit sau khi xong:*
+    ```bash
+    git add frontend/style.css frontend/js/ui-controller.js
+    git commit -m "feat(ui): Tái thiết kế toàn diện giao diện Modern Light Theme tone Trắng - Xanh Dương"
+    ```
+
+---
+
+## 4. TỔNG KẾT BẢNG THỐNG KÊ 33 COMMITS CHO TOÀN BỘ DỰ ÁN
 
 | STT | Thành viên | Phase | Commit Message (Conventional Commits) |
 | :---: | :---: | :---: | :--- |
@@ -352,6 +422,12 @@ Xây dựng, hoàn thiện, kiểm thử và triển khai toàn diện hệ th�
 | 25 | **TV3** | Phase 7 | `feat(ui): Xây dựng hệ thống Toast Notifications 5 trạng thái thay thế alert` |
 | 26 | **TV3** | Phase 8 | `feat(ui): Thiết kế Modal xác nhận bỏ phiếu trực quan chống thao tác nhầm` |
 | 27 | **TV3** | Phase 9 | `feat(ui): Thiết kế Bảng vinh danh Winner Spotlight và tối ưu responsive mobile` |
+| 28 | **TV1** | Phase 10 | `feat(contract): Cài đặt cơ chế Multi-Poll cho phép tạo nhiều cuộc bình chọn trên 1 contract` |
+| 29 | **TV2** | Phase 10 | `feat(web3): Triển khai middleware quản lý đa cuộc bình chọn createPoll và switchActivePoll` |
+| 30 | **TV3** | Phase 10 | `feat(ui): Thiết kế thanh chọn cuộc bình chọn Poll Selector và Modal tạo poll mới` |
+| 31 | **TV1** | Phase 11 | `refactor(contract): Hoàn thiện kiểm soát bảo mật và đồng bộ ABI cho hệ thống Multi-Poll` |
+| 32 | **TV2** | Phase 11 | `feat(web3): Tích hợp luồng chuyển đổi poll realtime trong main bridge và cập nhật seed script` |
+| 33 | **TV3** | Phase 11 | `feat(ui): Tái thiết kế toàn diện giao diện Modern Light Theme tone Trắng - Xanh Dương` |
 
 ---
 
@@ -370,4 +446,4 @@ git config user.email "email_cua_ban@gmail.com"
 git config user.name "Tên_GitHub_Thành_Viên_3"
 git config user.email "email_thanh_vien_3@gmail.com"
 ```
-Khi thực hiện xong 9 phase trên, đồ án của nhóm sẽ có đúng **27 commits phân bổ đều đặn và chuyên nghiệp** trên biểu đồ đóng góp của GitHub!
+Khi thực hiện xong 11 phase trên, đồ án của nhóm sẽ có đúng **33 commits phân bổ đều đặn và chuyên nghiệp (11 commit/thành viên)** trên biểu đồ đóng góp của GitHub!
