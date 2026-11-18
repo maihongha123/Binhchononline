@@ -4,9 +4,9 @@ const { ethers } = require("hardhat");
 /**
  * BỘ KIỂM THỬ TOÀN DIỆN SMART CONTRACT VOTING
  * Phụ trách: Minh Em - Smart Contract & Core Logic Engineer
- * Mục tiêu: 40 Unit Test cases (34 tests cơ bản & hòa phiếu + 6 tests kiến trúc Multi-Poll Phase 10)
+ * Mục tiêu: 46 Unit Test cases bao phủ toàn bộ logic cơ bản, hòa phiếu, Multi-Poll và bảo mật
  */
-describe("BỘ KIỂM THỬ TOÀN DIỆN HỆ THỐNG BÌNH CHỌN (40 TEST CASES)", function () {
+describe("BỘ KIỂM THỬ TOÀN DIỆN HỆ THỐNG BÌNH CHỌN (46 TEST CASES)", function () {
   let voting;
   let admin, voter1, voter2, voter3, voter4, voter5, stranger;
 
@@ -389,9 +389,9 @@ describe("BỘ KIỂM THỬ TOÀN DIỆN HỆ THỐNG BÌNH CHỌN (40 TEST CASE
   });
 
   // =================================================================
-  // 10. KIẾN TRÚC ĐA CUỘC BÌNH CHỌN - MULTI-POLL (6 TEST CASES - PHASE 10)
+  // 10. KIẾN TRÚC ĐA CUỘC BÌNH CHỌN - MULTI-POLL (6 TEST CASES)
   // =================================================================
-  describe("10. Kiến trúc Đa cuộc bình chọn (Multi-Poll - Phase 10)", function () {
+  describe("10. Kiến trúc Đa cuộc bình chọn (Multi-Poll)", function () {
     it("10.1 Khởi tạo mặc định có sẵn 1 cuộc bình chọn (#1) và activePollId bằng 1", async function () {
       expect(await voting.pollCount()).to.equal(1);
       expect(await voting.activePollId()).to.equal(1);
@@ -511,6 +511,115 @@ describe("BỘ KIỂM THỬ TOÀN DIỆN HỆ THỐNG BÌNH CHỌN (40 TEST CASE
       const [winner1, votes1] = await voting.getWinner();
       expect(winner1).to.equal("Bình");
       expect(votes1).to.equal(2);
+    });
+  });
+
+  // =================================================================
+  // 11. BẢO MẬT MULTI-POLL & CHỐNG RÒ RỈ DỮ LIỆU (6 TEST CASES)
+  // =================================================================
+  describe("11. Bảo mật Multi-Poll & Chống rò rỉ dữ liệu", function () {
+    it("11.1 Chặn khởi tạo hợp đồng với tên cuộc bầu cử rỗng", async function () {
+      const Voting = await ethers.getContractFactory("Voting");
+      await expect(Voting.deploy("")).to.be.revertedWith(
+        "Tieu de cuoc binh chon khong duoc de trong!"
+      );
+    });
+
+    it("11.2 Chặn vượt quá giới hạn tối đa số lượng cuộc bình chọn (MAX_POLLS = 20)", async function () {
+      expect(await voting.MAX_POLLS()).to.equal(20);
+
+      // Hiện tại đã có sẵn Poll #1, tạo thêm 19 poll để chạm mốc 20
+      for (let i = 2; i <= 20; i++) {
+        await voting.connect(admin).createPoll(`Cuộc bình chọn #${i}`);
+      }
+      expect(await voting.pollCount()).to.equal(20);
+
+      // Tạo poll thứ 21 phải bị chặn để chống spam gas DoS
+      await expect(
+        voting.connect(admin).createPoll("Cuộc bình chọn vượt ngưỡng #21")
+      ).to.be.revertedWith("Da dat gioi han so luong cuoc binh chon toi da!");
+    });
+
+    it("11.3 Chặn người lạ gọi switchPoll() và chặn chuyển trùng sang poll đang kích hoạt", async function () {
+      await voting.connect(admin).createPoll("Poll Số 2");
+
+      // Người lạ không được chuyển poll
+      await expect(
+        voting.connect(stranger).switchPoll(2)
+      ).to.be.revertedWith("Chi nguoi quan tri (Admin) moi co quyen thuc hien!");
+
+      // Chặn chuyển sang chính Poll #1 đang kích hoạt để tránh lãng phí gas
+      await expect(
+        voting.connect(admin).switchPoll(1)
+      ).to.be.revertedWith("Cuoc binh chon nay dang duoc kich hoat!");
+    });
+
+    it("11.4 Chống rò rỉ quyền cử tri: Cử tri được cấp quyền ở Poll #1 không thể bỏ phiếu ở Poll #2", async function () {
+      await voting.connect(admin).registerVoter(voter1.address);
+      await voting.connect(admin).createPoll("Poll Số 2");
+
+      // Chuyển sang Poll #2, thêm ứng viên và mở hòm phiếu nhưng KHÔNG cấp quyền cho voter1
+      await voting.connect(admin).switchPoll(2);
+      await voting.connect(admin).addCandidate("Ứng viên X");
+      await voting.connect(admin).addCandidate("Ứng viên Y");
+      await voting.connect(admin).startVoting();
+
+      // voter1 không được rò rỉ quyền từ Poll #1 sang Poll #2
+      await expect(
+        voting.connect(voter1).vote(1)
+      ).to.be.revertedWith("Ban khong co ten trong danh sach duoc phep bo phieu!");
+    });
+
+    it("11.5 Chống rò rỉ dữ liệu ứng viên & cử tri khi truy vấn trực tiếp qua getPollCandidates và getPollVoter", async function () {
+      await voting.connect(admin).addCandidate("Ứng viên Poll 1");
+      await voting.connect(admin).registerVoter(voter1.address);
+
+      await voting.connect(admin).createPoll("Poll Số 2");
+      await voting.connect(admin).switchPoll(2);
+      await voting.connect(admin).addCandidate("Ứng viên Poll 2A");
+      await voting.connect(admin).addCandidate("Ứng viên Poll 2B");
+      await voting.connect(admin).registerVoter(voter2.address);
+
+      // Kiểm chứng dữ liệu cô lập hoàn toàn giữa Poll #1 và Poll #2
+      const c1 = await voting.getPollCandidates(1);
+      const c2 = await voting.getPollCandidates(2);
+      expect(c1.length).to.equal(1);
+      expect(c1[0].name).to.equal("Ứng viên Poll 1");
+      expect(c2.length).to.equal(2);
+      expect(c2[0].name).to.equal("Ứng viên Poll 2A");
+
+      const v1InPoll2 = await voting.getPollVoter(2, voter1.address);
+      const v2InPoll1 = await voting.getPollVoter(1, voter2.address);
+      expect(v1InPoll2.isRegistered).to.be.false;
+      expect(v2InPoll1.isRegistered).to.be.false;
+
+      // Chặn truy vấn mã poll không tồn tại
+      await expect(voting.getPollCandidates(99)).to.be.revertedWith("Poll khong ton tai!");
+    });
+
+    it("11.6 Chống rò rỉ trạng thái: Đóng hòm phiếu Poll #1 (Ended) không ảnh hưởng Poll #2 đang mở (Voting)", async function () {
+      await voting.connect(admin).createPoll("Poll Số 2");
+
+      // Poll #1: mở rồi đóng (Ended)
+      await voting.connect(admin).addCandidate("A1");
+      await voting.connect(admin).addCandidate("A2");
+      await voting.connect(admin).startVoting();
+      await voting.connect(admin).endVoting();
+      expect(await voting.currentStatus()).to.equal(2);
+
+      // Chuyển sang Poll #2: vẫn ở trạng thái Registering (0) -> mở Voting (1) độc lập
+      await voting.connect(admin).switchPoll(2);
+      expect(await voting.currentStatus()).to.equal(0);
+      await voting.connect(admin).addCandidate("B1");
+      await voting.connect(admin).addCandidate("B2");
+      await voting.connect(admin).registerVoter(voter1.address);
+      await voting.connect(admin).startVoting();
+
+      // voter1 vẫn bỏ phiếu bình thường ở Poll #2 dù Poll #1 đã kết thúc
+      await voting.connect(voter1).vote(1);
+      expect(await voting.totalVotes()).to.equal(1);
+      expect((await voting.polls(1)).status).to.equal(2);
+      expect((await voting.polls(2)).status).to.equal(1);
     });
   });
 });

@@ -27,7 +27,7 @@ contract Voting {
         Ended        // 2: Kết thúc và xem kết quả
     }
 
-    // Cấu trúc thông tin của mỗi cuộc bình chọn (Phase 10 - Multi-Poll)
+    // Cấu trúc thông tin của mỗi cuộc bình chọn
     struct PollInfo {
         uint256 id;            // Mã định danh cuộc bình chọn (1, 2, 3...)
         string title;          // Tiêu đề cuộc bình chọn
@@ -37,6 +37,7 @@ contract Voting {
 
     // Biến trạng thái lưu trữ trên Blockchain (State Storage)
     address public admin;                                             // Địa chỉ ví người quản trị
+    uint256 public constant MAX_POLLS = 20;                           // Giới hạn tối đa số cuộc bình chọn (chống spam gas)
     uint256 public pollCount;                                         // Tổng số cuộc bình chọn đã tạo
     uint256 public activePollId;                                      // Mã cuộc bình chọn đang kích hoạt
     mapping(uint256 => PollInfo) public polls;                        // Thông tin các cuộc bình chọn theo ID
@@ -63,8 +64,15 @@ contract Voting {
         _;
     }
 
+    // Bộ điều kiện kiểm tra mã cuộc bình chọn có tồn tại hợp lệ
+    modifier pollExists(uint256 _pollId) {
+        require(_pollId > 0 && _pollId <= pollCount, "Poll khong ton tai!");
+        _;
+    }
+
     // Hàm khởi tạo - Thiết lập Admin và cuộc bình chọn mặc định #1
     constructor(string memory _electionName) {
+        require(bytes(_electionName).length > 0, "Tieu de cuoc binh chon khong duoc de trong!");
         admin = msg.sender;
         pollCount = 1;
         activePollId = 1;
@@ -76,9 +84,10 @@ contract Voting {
         });
     }
 
-    // Tạo thêm một cuộc bình chọn mới độc lập (Phase 10 - Multi-Poll)
+    // Tạo thêm một cuộc bình chọn mới độc lập
     function createPoll(string memory _title) external onlyAdmin returns (uint256) {
         require(bytes(_title).length > 0, "Tieu de cuoc binh chon khong duoc de trong!");
+        require(pollCount < MAX_POLLS, "Da dat gioi han so luong cuoc binh chon toi da!");
 
         pollCount += 1;
         polls[pollCount] = PollInfo({
@@ -92,22 +101,43 @@ contract Voting {
         return pollCount;
     }
 
-    // Chuyển đổi cuộc bình chọn đang kích hoạt (Phase 10 - Multi-Poll)
-    function switchPoll(uint256 _pollId) external onlyAdmin {
-        require(_pollId > 0 && _pollId <= pollCount, "Poll khong ton tai!");
+    // Chuyển đổi cuộc bình chọn đang kích hoạt
+    function switchPoll(uint256 _pollId) external onlyAdmin pollExists(_pollId) {
+        require(_pollId != activePollId, "Cuoc binh chon nay dang duoc kich hoat!");
 
         uint256 previousPollId = activePollId;
         activePollId = _pollId;
         emit PollSwitched(previousPollId, _pollId);
     }
 
-    // Lấy toàn bộ danh sách các cuộc bình chọn đã tạo (Phase 10 - Multi-Poll)
+    // Lấy toàn bộ danh sách các cuộc bình chọn đã tạo
     function getPolls() external view returns (PollInfo[] memory) {
         PollInfo[] memory list = new PollInfo[](pollCount);
         for (uint256 i = 1; i <= pollCount; i++) {
             list[i - 1] = polls[i];
         }
         return list;
+    }
+
+    // Truy vấn danh sách ứng viên riêng theo mã poll
+    function getPollCandidates(uint256 _pollId)
+        external
+        view
+        pollExists(_pollId)
+        returns (Candidate[] memory)
+    {
+        return pollCandidates[_pollId];
+    }
+
+    // Truy vấn thông tin cử tri riêng theo mã poll
+    function getPollVoter(uint256 _pollId, address _voter)
+        external
+        view
+        pollExists(_pollId)
+        returns (bool isRegistered, bool hasVoted, uint256 votedCandidateId)
+    {
+        Voter storage v = pollVoters[_pollId][_voter];
+        return (v.isRegistered, v.hasVoted, v.votedCandidateId);
     }
 
     // Các hàm truy vấn thông tin cuộc bình chọn đang kích hoạt (giữ nguyên ABI cũ)
