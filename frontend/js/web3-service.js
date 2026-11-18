@@ -2,7 +2,7 @@
 // DỰ ÁN BÌNH CHỌN BLOCKCHAIN (DAPP)
 // PHÂN HỆ: WEB3 MIDDLEWARE & GIAO TIẾP BLOCKCHAIN
 // TÁC GIẢ CHỊU TRÁCH NHIỆM: THÀNH VIÊN 2 (Web3 Middleware & Deployment Engineer)
-// PHASE 8: Cài đặt cơ chế autoConnect tự động khôi phục kết nối ví khi F5
+// PHASE 10: Triển khai middleware quản lý đa cuộc bình chọn createPoll và switchActivePoll
 // ==============================================================================
 
 class Web3Service {
@@ -17,6 +17,8 @@ class Web3Service {
     this.targetNetwork = "sepolia";
     this.abi = null;
     this.isConnecting = false;
+    this.activePollId = 1; // PHASE 10: Mã cuộc bình chọn đang kích hoạt
+    this.pollsList = [];   // PHASE 10: Danh sách cache các cuộc bình chọn
 
     // Cấu hình các mạng Blockchain hỗ trợ (Localhost & Sepolia Testnets)
     this.SUPPORTED_NETWORKS = {
@@ -58,10 +60,16 @@ class Web3Service {
       "function startVoting()",
       "function endVoting()",
       "function vote(uint256 _candidateId)",
+      "function pollCount() view returns (uint256)",
+      "function activePollId() view returns (uint256)",
+      "function getPolls() view returns (tuple(uint256 id, string title, uint8 status, uint256 totalVotes)[])",
+      "function createPoll(string _title) returns (uint256)",
+      "function switchPoll(uint256 _pollId)",
       "event CandidateAdded(uint256 indexed candidateId, string name)",
       "event VoterRegistered(address indexed voterAddress)",
       "event StatusChanged(uint8 previousStatus, uint8 newStatus)",
-      "event VoteCasted(address indexed voter, uint256 indexed candidateId)"
+      "event VoteCasted(address indexed voter, uint256 indexed candidateId)",
+      "event PollCreated(uint256 indexed pollId, string title)"
     ];
   }
 
@@ -234,9 +242,15 @@ class Web3Service {
 
   /**
    * Truy vấn dữ liệu an toàn từ Blockchain (có xử lý fallback nếu hợp đồng đang chờ deploy)
+   * PHASE 10: Hỗ trợ nạp dữ liệu theo targetPollId và trích xuất danh sách tất cả các poll
+   * @param {number|null} targetPollId - ID cuộc bình chọn cần nạp (mặc định lấy activePollId)
    */
-  async fetchElectionData() {
+  async fetchElectionData(targetPollId = null) {
     if (!this.contract) throw new Error("Chưa kết nối hợp đồng thông minh!");
+
+    if (targetPollId && Number(targetPollId) > 0) {
+      this.activePollId = Number(targetPollId);
+    }
 
     let title = "Bầu cử Ban Cán Sự Khóa 2026";
     let status = 0;
@@ -248,6 +262,7 @@ class Web3Service {
     ];
     let highestVote = 0;
     let winner = null;
+    let polls = [];
 
     // Kiểm tra xem contract đã có mã bytecode thực tế trên mạng hiện tại chưa
     try {
@@ -265,6 +280,22 @@ class Web3Service {
         title = onChainTitle;
         status = Number(statusRaw);
         totalVotes = Number(totalVotesRaw);
+
+        // PHASE 10: Đọc danh sách tất cả các Polls nếu hợp đồng hỗ trợ getPolls
+        try {
+          if (typeof readContract.getPolls === "function") {
+            const rawPolls = await readContract.getPolls();
+            if (rawPolls && rawPolls.length > 0) {
+              polls = rawPolls.map(p => ({
+                id: Number(p.id),
+                title: p.title,
+                status: Number(p.status),
+                totalVotes: Number(p.totalVotes)
+              }));
+              this.pollsList = polls;
+            }
+          }
+        } catch (_) {}
 
         candidates = rawCandidates.map(c => {
           const vCount = Number(c.voteCount);
@@ -289,6 +320,17 @@ class Web3Service {
       }
     } catch (readErr) {
       console.warn("[Web3Service] Sử dụng dữ liệu khởi tạo:", readErr.message);
+    }
+
+    // Fallback nếu chưa có multi-poll thì tạo 1 poll mặc định từ dữ liệu hiện hành
+    if (!polls || polls.length === 0) {
+      polls = [{
+        id: 1,
+        title: title,
+        status: status,
+        totalVotes: totalVotes
+      }];
+      this.pollsList = polls;
     }
 
     // Thông tin cử tri hiện tại
@@ -325,7 +367,9 @@ class Web3Service {
       winner,
       isAdmin,
       contractAddress: this.contractAddress,
-      currentAccount: this.currentAccount
+      currentAccount: this.currentAccount,
+      polls,
+      activePollId: this.activePollId
     };
   }
 
@@ -457,6 +501,100 @@ class Web3Service {
     return await this.executeContractTransaction("endVoting", []);
   }
 
+  // ==============================================================================
+  // PHASE 10: QUẢN LÝ ĐA CUỘC BÌNH CHỌN (MULTI-POLL METHODS)
+  // ==============================================================================
+
+  /**
+   * Lấy danh sách tất cả các cuộc bình chọn từ Smart Contract
+   * @returns {Promise<Array<{ id: number, title: string, status: number, totalVotes: number }>>}
+   */
+  async getAllPolls() {
+    try {
+      const readContract = this.getReadContract();
+      if (typeof readContract.getPolls === "function") {
+        const rawPolls = await readContract.getPolls();
+        if (rawPolls && rawPolls.length > 0) {
+          const formatted = rawPolls.map(p => ({
+            id: Number(p.id),
+            title: p.title,
+            status: Number(p.status),
+            totalVotes: Number(p.totalVotes)
+          }));
+          this.pollsList = formatted;
+          return formatted;
+        }
+      }
+      const title = await readContract.electionName();
+      const status = await readContract.currentStatus();
+      const total = await readContract.totalVotes();
+      const single = [{
+        id: 1,
+        title: title || "Cuộc bình chọn hiện tại",
+        status: Number(status),
+        totalVotes: Number(total)
+      }];
+      this.pollsList = single;
+      return single;
+    } catch (err) {
+      console.warn("[Web3Service - Phase 10] Sử dụng danh sách poll mặc định:", err.message);
+      return this.pollsList.length > 0 ? this.pollsList : [{
+        id: 1,
+        title: "Cuộc bình chọn mặc định",
+        status: 0,
+        totalVotes: 0
+      }];
+    }
+  }
+
+  /**
+   * Phương thức Admin: Tạo mới một cuộc bình chọn trên cùng Smart Contract
+   * @param {string} title - Tiêu đề cuộc bình chọn mới
+   */
+  async createPoll(title) {
+    const trimmed = (title || "").trim();
+    if (!trimmed) {
+      throw new Error("Tiêu đề cuộc bình chọn không được để trống!");
+    }
+    return await this.executeContractTransaction("createPoll", [trimmed]);
+  }
+
+  /**
+   * Chuyển đổi cuộc bình chọn đang xem/tương tác trên DApp
+   * @param {number} pollId - Mã số cuộc bình chọn cần chuyển
+   */
+  async switchActivePoll(pollId) {
+    const id = Number(pollId);
+    if (!id || id <= 0) {
+      throw new Error("Mã cuộc bình chọn không hợp lệ!");
+    }
+    this.activePollId = id;
+    console.log(`[Web3Service - Phase 10] Đã chuyển activePollId sang: #${id}`);
+
+    // Nếu hợp đồng có hàm switchPoll on-chain cho Admin
+    try {
+      const readContract = this.getReadContract();
+      if (typeof readContract.switchPoll === "function" && this.checkIsAdmin()) {
+        await this.executeContractTransaction("switchPoll", [BigInt(id)]);
+      }
+    } catch (_) {
+      // Bỏ qua nếu chuyển đổi chỉ cần mức client
+    }
+
+    return await this.fetchElectionData(id);
+  }
+
+  /**
+   * Kiểm tra nhanh quyền Admin của tài khoản đang kết nối
+   */
+  checkIsAdmin() {
+    return Boolean(
+      this.contractAdmin &&
+      this.currentAccount &&
+      this.contractAdmin.toLowerCase() === this.currentAccount.toLowerCase()
+    );
+  }
+
   /**
    * PHASE 6: Thiết lập 4 trình lắng nghe sự kiện On-Chain thời gian thực từ EVM
    * Tự động làm mới dữ liệu và cập nhật giao diện mà không cần F5
@@ -519,7 +657,19 @@ class Web3Service {
         this._dispatchWeb3Event("StatusChanged", { prevStatus: prev, newStatus: next, event });
       });
 
-      console.log("[Web3Service - Phase 6] 4 trình lắng nghe sự kiện EVM đã sẵn sàng hoạt động!");
+      // 6. Sự kiện 5 (Phase 10): PollCreated (Tạo mới cuộc bình chọn)
+      try {
+        this.contract.on("PollCreated", (pollId, title, event) => {
+          const pId = Number(pollId);
+          console.log(`[EVM Event - PollCreated] Đã khởi tạo cuộc bình chọn mới #${pId}: "${title}"`);
+          if (callbacks.onPollCreated) {
+            callbacks.onPollCreated(pId, title, event);
+          }
+          this._dispatchWeb3Event("PollCreated", { pollId: pId, title, event });
+        });
+      } catch (_) {}
+
+      console.log("[Web3Service - Phase 6 & 10] Các trình lắng nghe sự kiện EVM đã sẵn sàng hoạt động!");
     } catch (e) {
       console.warn("[Web3Service - Phase 6] Lỗi khi thiết lập event listeners:", e.message);
     }
@@ -647,6 +797,13 @@ class Web3Service {
     }
     if (fullText.includes("Cuoc bau cu chua ket thuc")) {
       return "Cuộc bầu cử chưa kết thúc nên chưa thể xác định người đắc cử!";
+    }
+    // PHASE 10: Xử lý ngoại lệ cho Đa cuộc bình chọn
+    if (fullText.includes("Tieu de") || fullText.includes("tieu de")) {
+      return "Dữ liệu không hợp lệ: Tiêu đề cuộc bình chọn không được để trống!";
+    }
+    if (fullText.includes("Poll khong ton tai") || fullText.includes("cuoc binh chon khong ton tai")) {
+      return "Cuộc bình chọn không tồn tại hoặc mã định danh poll không hợp lệ!";
     }
 
     // 5. Nhóm lỗi kết nối mạng, RPC Blockchain & Rate limit
