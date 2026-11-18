@@ -2,7 +2,7 @@
 // DỰ ÁN BÌNH CHỌN BLOCKCHAIN (DAPP)
 // PHÂN HỆ: GIAO DIỆN NGƯỜI DÙNG & TƯƠNG TÁC (UI/UX)
 // TÁC GIẢ CHỊU TRÁCH NHIỆM: THÀNH VIÊN 3 (Frontend UI/UX Developer)
-// PHASE 10: Thiết kế thanh chọn cuộc bình chọn Poll Selector và Modal tạo poll
+// PHASE 11: Tái thiết kế toàn diện giao diện Modern Light Theme tone Trắng - Xanh Dương
 // ==============================================================================
 
 class UIController {
@@ -255,18 +255,22 @@ class UIController {
 
     if (isAdmin) {
       this.dom.userRoleSpan.textContent = "Admin";
-      this.dom.userRoleSpan.style.backgroundColor = "#e11d48";
+      this.dom.userRoleSpan.style.backgroundColor = "var(--danger-light)";
+      this.dom.userRoleSpan.style.color = "var(--danger)";
+      this.dom.userRoleSpan.style.borderColor = "var(--danger-border)";
       this.dom.adminPermissionTag.textContent = "Quản trị viên (Admin)";
-      this.dom.adminPermissionTag.style.borderColor = "#10b981";
-      this.dom.adminPermissionTag.style.color = "#34d399";
-      this.dom.adminPermissionTag.style.background = "rgba(16, 185, 129, 0.15)";
+      this.dom.adminPermissionTag.style.borderColor = "var(--success-border)";
+      this.dom.adminPermissionTag.style.color = "var(--success)";
+      this.dom.adminPermissionTag.style.background = "var(--success-light)";
     } else {
       this.dom.userRoleSpan.textContent = "Cử tri";
-      this.dom.userRoleSpan.style.backgroundColor = "#2563eb";
+      this.dom.userRoleSpan.style.backgroundColor = "var(--primary-light)";
+      this.dom.userRoleSpan.style.color = "var(--primary)";
+      this.dom.userRoleSpan.style.borderColor = "var(--primary-border)";
       this.dom.adminPermissionTag.textContent = "Chỉ xem (Cử tri)";
-      this.dom.adminPermissionTag.style.borderColor = "";
-      this.dom.adminPermissionTag.style.color = "";
-      this.dom.adminPermissionTag.style.background = "";
+      this.dom.adminPermissionTag.style.borderColor = "var(--border-color)";
+      this.dom.adminPermissionTag.style.color = "var(--text-sub)";
+      this.dom.adminPermissionTag.style.background = "var(--bg-subtle)";
     }
 
     this.dom.connectWalletBtn.classList.add("hidden");
